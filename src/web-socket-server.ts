@@ -20,6 +20,10 @@ const startWebSocketServer = (mainWindow: BrowserWindow) => {
                 if (mainWindow && !mainWindow.isDestroyed()) {
                     mainWindow.webContents.send('browser-activity', data);
                 }
+
+                // [TODO] somewhere right here we call a model back to the backend
+                // [TODO] somewhere right here we send a signal back to the extension to 
+                // perform actions in the front end (not on the avatar)
             } catch (err) {
                 console.error('Failed to parse WebSocket message:', err);
             }

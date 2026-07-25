@@ -97,173 +97,50 @@ body {
   position: relative;
   cursor: grab;
   margin-bottom: 10px;
+  animation: float 4s ease-in-out infinite; /* Keep the widget bobbing floating effect */
 }
 
 .avatar-container:active {
   cursor: grabbing;
 }
 
-/* Robot Bobbing and Animations */
-.avatar-robot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-  animation: float 4s ease-in-out infinite;
+.pixel-avatar {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background-repeat: no-repeat;
+  transform: scale(2.2);
+  transform-origin: bottom center;
 }
 
-/* Robot Head */
-.robot-head {
-  width: 80px;
-  height: 72px;
-  background: var(--robot-gradient);
-  border: 2px solid var(--primary-glow);
-  border-radius: 24px;
-  box-shadow:
-    0 0 15px rgba(138, 75, 243, 0.3),
-    inset 0 2px 5px rgba(255, 255, 255, 0.1);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-  z-index: 3;
+/* Default fallback sprite background & states */
+.pixel-avatar.idle {
+  background-image: url('./assets/sprites/idle.png');
+  animation: play-idle 0.8s steps(4) infinite;
 }
 
-/* Antennas / Ears */
-.robot-head::before,
-.robot-head::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  width: 6px;
-  height: 14px;
-  background: var(--primary-glow);
-  border-radius: 3px;
-  transform: translateY(-50%);
+.pixel-avatar.speaking {
+  background-image: url('./assets/sprites/speaking.png');
+  animation: play-speaking 0.6s steps(6) infinite;
 }
 
-.robot-head::before {
-  left: -7px;
-  border-radius: 3px 0 0 3px;
+@keyframes play-idle {
+  from {
+    background-position: 0px 0px;
+  }
+  to {
+    background-position: -256px 0px;
+  }
 }
 
-.robot-head::after {
-  right: -7px;
-  border-radius: 0 3px 3px 0;
-}
-
-/* Digital LED Face */
-.robot-face {
-  width: 62px;
-  height: 52px;
-  background: #090614;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-around;
-  align-items: center;
-  padding: 6px 0;
-  box-sizing: border-box;
-}
-
-/* Blinking EYES */
-.robot-eyes {
-  display: flex;
-  justify-content: space-between;
-  width: 36px;
-}
-
-.eye {
-  width: 10px;
-  height: 10px;
-  background: var(--secondary-glow);
-  border-radius: 50%;
-  box-shadow: 0 0 10px var(--secondary-glow);
-  position: relative;
-  animation: blink 5s ease-in-out infinite;
-}
-
-/* Talking MOUTH */
-.robot-mouth {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  height: 14px;
-}
-
-.mouth-wave {
-  width: 4px;
-  height: 3px;
-  background: var(--secondary-glow);
-  border-radius: 2px;
-  box-shadow: 0 0 6px var(--secondary-glow);
-  transition: height 0.15s ease;
-}
-
-/* Animate mouth waves when speaking */
-.avatar-container.speaking .mouth-wave:nth-child(1) {
-  animation: mouthWave 0.6s ease-in-out infinite alternate;
-}
-
-.avatar-container.speaking .mouth-wave:nth-child(2) {
-  animation: mouthWave 0.4s ease-in-out infinite alternate 0.1s;
-}
-
-.avatar-container.speaking .mouth-wave:nth-child(3) {
-  animation: mouthWave 0.5s ease-in-out infinite alternate 0.2s;
-}
-
-/* Robot Body */
-.robot-body {
-  width: 54px;
-  height: 44px;
-  background: var(--robot-gradient);
-  border: 2px solid var(--primary-glow);
-  border-radius: 16px 16px 20px 20px;
-  margin-top: -8px;
-  position: relative;
-  z-index: 2;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-}
-
-/* Glowing energy core */
-.body-core {
-  width: 16px;
-  height: 16px;
-  background: var(--secondary-glow);
-  border-radius: 50%;
-  box-shadow:
-    0 0 15px var(--secondary-glow),
-    inset 0 0 4px rgba(255, 255, 255, 0.8);
-  animation: corePulse 2s ease-in-out infinite alternate;
-}
-
-.body-ring {
-  position: absolute;
-  width: 28px;
-  height: 8px;
-  border: 2px solid var(--primary-glow);
-  border-radius: 50%;
-  transform: rotate(-10deg);
-  opacity: 0.6;
-}
-
-/* Shadow underneath */
-.robot-shadow {
-  width: 60px;
-  height: 8px;
-  background: rgba(0, 0, 0, 0.45);
-  border-radius: 50%;
-  filter: blur(4px);
-  position: absolute;
-  bottom: -22px;
-  animation: shadowScale 4s ease-in-out infinite;
-  z-index: 1;
+@keyframes play-speaking {
+  from {
+    background-position: 0px 0px;
+  }
+  to {
+    background-position: -384px 0px;
+  }
 }
 
 /* KEYFRAMES ANIMATIONS */
@@ -278,59 +155,5 @@ body {
 
   100% {
     transform: translateY(0px);
-  }
-}
-
-@keyframes shadowScale {
-  0% {
-    transform: scale(1);
-    opacity: 0.9;
-  }
-
-  50% {
-    transform: scale(0.8);
-    opacity: 0.5;
-  }
-
-  100% {
-    transform: scale(1);
-    opacity: 0.9;
-  }
-}
-
-@keyframes blink {
-
-  0%,
-  96%,
-  100% {
-    transform: scaleY(1);
-  }
-
-  98% {
-    transform: scaleY(0.1);
-  }
-}
-
-@keyframes mouthWave {
-  0% {
-    height: 3px;
-  }
-
-  100% {
-    height: 14px;
-  }
-}
-
-@keyframes corePulse {
-  0% {
-    transform: scale(0.9);
-    opacity: 0.8;
-    filter: brightness(0.9);
-  }
-
-  100% {
-    transform: scale(1.15);
-    opacity: 1;
-    filter: brightness(1.2);
   }
 }
