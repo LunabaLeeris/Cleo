@@ -104,43 +104,13 @@ body {
   cursor: grabbing;
 }
 
-.pixel-avatar {
-  width: 64px;
-  height: 64px;
+/* Pixel Avatar Canvas */
+#avatar-canvas {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  background-repeat: no-repeat;
-  transform: scale(2.2);
+  /* Canvas size is set programmatically by AvatarCompositor.
+     CSS transform scales it up for display while keeping pixel-perfect rendering. */
   transform-origin: bottom center;
-}
-
-/* Default fallback sprite background & states */
-.pixel-avatar.idle {
-  background-image: url('./assets/sprites/idle.png');
-  animation: play-idle 0.8s steps(4) infinite;
-}
-
-.pixel-avatar.speaking {
-  background-image: url('./assets/sprites/speaking.png');
-  animation: play-speaking 0.6s steps(6) infinite;
-}
-
-@keyframes play-idle {
-  from {
-    background-position: 0px 0px;
-  }
-  to {
-    background-position: -256px 0px;
-  }
-}
-
-@keyframes play-speaking {
-  from {
-    background-position: 0px 0px;
-  }
-  to {
-    background-position: -384px 0px;
-  }
 }
 
 /* KEYFRAMES ANIMATIONS */

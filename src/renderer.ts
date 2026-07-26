@@ -1,4 +1,5 @@
 import './index.css';
+import { AvatarCompositor, defaultAvatarConfig } from './avatar';
 
 // Type checking definitions for exposed window API
 interface Window {
@@ -11,9 +12,18 @@ interface Window {
 
 const bubble = document.getElementById('bubble') as HTMLDivElement;
 const avatar = document.getElementById('avatar') as HTMLDivElement;
-const pixelAvatar = document.getElementById('pixel-avatar') as HTMLDivElement;
+const canvas = document.getElementById('avatar-canvas') as HTMLCanvasElement;
 
-// Smooth window dragging state
+const compositor = new AvatarCompositor(canvas, defaultAvatarConfig);
+
+// Avatar compose
+(async () => {
+  await compositor.init();
+  compositor.start();
+  console.log('[Renderer] AvatarCompositor started.');
+})();
+
+// Smooth window
 let isDragging = false;
 let startX = 0;
 let startY = 0;
@@ -42,7 +52,7 @@ window.addEventListener('mousemove', (event) => {
 
   if (shouldBeInteractive !== isMouseOverInteractive) {
     isMouseOverInteractive = shouldBeInteractive;
-    (window as any).electronAPI.setIgnoreMouseEvents(!shouldBeInteractive, { forward: true });
+    (window as any).electronAPI?.setIgnoreMouseEvents(!shouldBeInteractive, { forward: true });
   }
 });
 
@@ -61,7 +71,7 @@ window.addEventListener('mousemove', (e) => {
     const dy = e.screenY - startY;
     startX = e.screenX;
     startY = e.screenY;
-    (window as any).electronAPI.dragWindow(dx, dy);
+    (window as any).electronAPI?.dragWindow(dx, dy);
   }
 });
 
@@ -72,24 +82,29 @@ window.addEventListener('mouseup', () => {
   }
 });
 
-// Pixel Avatar State Controller
-function playAvatarState(state: 'idle' | 'speaking') {
-  if (!pixelAvatar) return;
-  if (state === 'speaking') {
-    pixelAvatar.classList.remove('idle');
-    pixelAvatar.classList.add('speaking');
-  } else {
-    pixelAvatar.classList.remove('speaking');
-    pixelAvatar.classList.add('idle');
-  }
+// State helpers
+
+/**
+ * Play speaking animation: mouth loops speak, optional eyebrow raise.
+ */
+function startSpeaking(): void {
+  compositor.playAnimation('mouth', 'speak');
 }
 
-// Start with the idle state animation
-playAvatarState('idle');
+/**
+ * Return to idle: reset all parts to their defaults.
+ */
+function stopSpeaking(): void {
+  compositor.resetPart('mouth');
+}
 
-// Handle data tracking. Web socket sends data when a data is received via extensions
-// as browser activity.
-(window as any).electronAPI.onBrowserActivity((data: { url: string; title: string }) => {
+// Click to blink
+canvas.addEventListener('click', () => {
+  compositor.playAnimation('eyes', 'blink');
+});
+
+// Google activity handler
+(window as any).electronAPI?.onBrowserActivity((data: { url: string; title: string }) => {
   const hostname = new URL(data.url).hostname;
   let speech = `Visiting ${hostname}, huh?`;
 
@@ -109,16 +124,15 @@ let currentTimeout: NodeJS.Timeout;
 function showSpeechBubble(text: string) {
   bubble.innerText = text;
   bubble.classList.add('visible');
-  playAvatarState('speaking');
+  startSpeaking();
 
   clearTimeout(currentTimeout);
   // Hide speech bubble after 5 seconds
   currentTimeout = setTimeout(() => {
     bubble.classList.remove('visible');
-    playAvatarState('idle');
+    stopSpeaking();
   }, 5000);
 }
 
-// [TODO] Animations
-// [TODO] TTS
-// [TODO] Activities
+// [TO DO] TTS
+// [TO DO] Activities
