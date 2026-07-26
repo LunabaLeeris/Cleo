@@ -10,7 +10,7 @@ Cleo is a companion that will accompany you while you use your computer and brow
 Here is a preview of Cleo's idle sprite:
 
 ### Idle Sprite
-![Cleo Idle Sprite](./src/assets/sprites/body/body_idle.png)
+![Cleo Idle Sprite](assets/sprites/body/body_idle.png)
 
 *(Cleo features a composable sprite system with independent body, eye, mouth, and eyebrow animation layers).*
 ---
