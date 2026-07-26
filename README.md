@@ -13,7 +13,9 @@ Cleo is an interactive desktop and browser companion designed to keep you on tra
 
 *(Cleo features a dynamic composable pixel sprite system with independent body, eye, mouth, and eyebrow layers).*
 
-![Cleo Idle Animation](./assets/cleo_idle.gif)
+<div align="center">
+  <img src="./assets/cleo_idle.gif" alt="Cleo Idle Animation" width="400" />
+</div>
 
 ---
 
