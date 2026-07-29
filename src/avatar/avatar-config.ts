@@ -16,10 +16,10 @@ import SPRITE_BODY_IDLE from '../assets/sprites/body/body_idle.png';
 import SPRITE_EYES_IDLE from '../assets/sprites/eyes/eyes_idle.png';
 import SPRITE_EYES_BLINK from '../assets/sprites/eyes/eyes_blink.png';
 import SPRITE_MOUTH_IDLE from '../assets/sprites/mouth/mouth_idle.png';
+import SPRITE_MOUTH_SPEAK from '../assets/sprites/mouth/mouth_speak.png';
 import SPRITE_BROWS_IDLE from '../assets/sprites/brows/brows_idle.png';
 
 // [TO DO] 
-const SPRITE_MOUTH_SPEAK = '';
 const SPRITE_BROWS_QUESTION = '';
 
 export const defaultAvatarConfig: AvatarConfig = {
@@ -77,7 +77,7 @@ export const defaultAvatarConfig: AvatarConfig = {
         },
         speak: {
           src: SPRITE_MOUTH_SPEAK,
-          frameCount: 4,
+          frameCount: 6,
           frameWidth: 64,
           frameHeight: 64,
           loop: 'infinite'

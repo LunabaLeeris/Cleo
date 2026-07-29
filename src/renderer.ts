@@ -83,7 +83,6 @@ window.addEventListener('mouseup', () => {
 });
 
 // State helpers
-
 /**
  * Play speaking animation: mouth loops speak, optional eyebrow raise.
  */
@@ -120,18 +119,32 @@ canvas.addEventListener('click', () => {
   showSpeechBubble(speech);
 });
 
-let currentTimeout: NodeJS.Timeout;
+let speakingTimeout: NodeJS.Timeout;
+let bubbleTimeout: NodeJS.Timeout;
 function showSpeechBubble(text: string) {
   bubble.innerText = text;
   bubble.classList.add('visible');
   startSpeaking();
 
-  clearTimeout(currentTimeout);
-  // Hide speech bubble after 5 seconds
-  currentTimeout = setTimeout(() => {
-    bubble.classList.remove('visible');
+  clearTimeout(speakingTimeout);
+  clearTimeout(bubbleTimeout);
+
+  // Get the number of words (handles extra spaces and empty strings)
+  const words = text.trim().split(/\s+/);
+  const wordCount = words[0] === "" ? 0 : words.length;
+
+  const speakingDuration = Math.max(1000, wordCount * 500);
+
+  // The bubble stays visible for an extra 1.5 seconds after speaking stops
+  const bubbleDuration = speakingDuration + 1500;
+
+  speakingTimeout = setTimeout(() => {
     stopSpeaking();
-  }, 5000);
+  }, speakingDuration);
+
+  bubbleTimeout = setTimeout(() => {
+    bubble.classList.remove('visible');
+  }, bubbleDuration);
 }
 
 // [TO DO] TTS

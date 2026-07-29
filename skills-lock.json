@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "asd-ste100": {
+      "source": "nuelcyoung/asd-ste100",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "d3b99df846421c2d57b05096356a8bc3cea8e79458c7a7a2125bde29b392a4d2"
+    }
+  }
+}
