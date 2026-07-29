@@ -39,7 +39,7 @@ const createWindow = () => {
     );
   }
 
-  // Open the DevTools. (Commented out by default to keep avatar experience clean)
+  // Open the DevTools.
   // mainWindow.webContents.openDevTools();
 
   return mainWindow;

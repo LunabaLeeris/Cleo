@@ -1,5 +1,5 @@
-
 import './index.css';
+import { AvatarCompositor, defaultAvatarConfig } from './avatar';
 
 // Type checking definitions for exposed window API
 interface Window {
@@ -12,23 +12,49 @@ interface Window {
 
 const bubble = document.getElementById('bubble') as HTMLDivElement;
 const avatar = document.getElementById('avatar') as HTMLDivElement;
+const canvas = document.getElementById('avatar-canvas') as HTMLCanvasElement;
 
-// allow mouse to pass right through and still click behind avatar
-// [TODO] Change eventually because we want avatar to be clickable
-const interactiveElements = [avatar, bubble];
-interactiveElements.forEach((el) => {
-  el.addEventListener('mouseenter', () => {
-    (window as any).electronAPI.setIgnoreMouseEvents(false);
-  });
-  el.addEventListener('mouseleave', () => {
-    (window as any).electronAPI.setIgnoreMouseEvents(true, { forward: true });
-  });
-});
+const compositor = new AvatarCompositor(canvas, defaultAvatarConfig);
 
-// Smooth window dragging using screen-relative offsets
+// Avatar compose
+(async () => {
+  await compositor.init();
+  compositor.start();
+  console.log('[Renderer] AvatarCompositor started.');
+})();
+
+// Smooth window
 let isDragging = false;
 let startX = 0;
 let startY = 0;
+
+// State to track if mouse is over interactive parts (avatar or speech bubble)
+let isMouseOverInteractive = false;
+
+window.addEventListener('mousemove', (event) => {
+  // If we are actively dragging, keep it interactive
+  if (isDragging) return;
+
+  const rectAvatar = avatar.getBoundingClientRect();
+  const rectBubble = bubble.getBoundingClientRect();
+
+  const x = event.clientX;
+  const y = event.clientY;
+
+  // Check if mouse coordinates are within avatar or visible bubble boundaries
+  const overAvatar = x >= rectAvatar.left && x <= rectAvatar.right &&
+    y >= rectAvatar.top && y <= rectAvatar.bottom;
+  const overBubble = bubble.classList.contains('visible') &&
+    x >= rectBubble.left && x <= rectBubble.right &&
+    y >= rectBubble.top && y <= rectBubble.bottom;
+
+  const shouldBeInteractive = overAvatar || overBubble;
+
+  if (shouldBeInteractive !== isMouseOverInteractive) {
+    isMouseOverInteractive = shouldBeInteractive;
+    (window as any).electronAPI?.setIgnoreMouseEvents(!shouldBeInteractive, { forward: true });
+  }
+});
 
 avatar.addEventListener('mousedown', (e) => {
   if (e.button === 0) { // Left click only
@@ -45,7 +71,7 @@ window.addEventListener('mousemove', (e) => {
     const dy = e.screenY - startY;
     startX = e.screenX;
     startY = e.screenY;
-    (window as any).electronAPI.dragWindow(dx, dy);
+    (window as any).electronAPI?.dragWindow(dx, dy);
   }
 });
 
@@ -56,10 +82,29 @@ window.addEventListener('mouseup', () => {
   }
 });
 
-// Handle data tracking. Web socket sends data when a data is received via extensions
-// as browser activity.
-(window as any).electronAPI.onBrowserActivity((data: { url: string; title: string }) => {
-  // [TODO] Change eventually to handle complex monitoring 
+// State helpers
+
+/**
+ * Play speaking animation: mouth loops speak, optional eyebrow raise.
+ */
+function startSpeaking(): void {
+  compositor.playAnimation('mouth', 'speak');
+}
+
+/**
+ * Return to idle: reset all parts to their defaults.
+ */
+function stopSpeaking(): void {
+  compositor.resetPart('mouth');
+}
+
+// Click to blink
+canvas.addEventListener('click', () => {
+  compositor.playAnimation('eyes', 'blink');
+});
+
+// Google activity handler
+(window as any).electronAPI?.onBrowserActivity((data: { url: string; title: string }) => {
   const hostname = new URL(data.url).hostname;
   let speech = `Visiting ${hostname}, huh?`;
 
@@ -79,16 +124,15 @@ let currentTimeout: NodeJS.Timeout;
 function showSpeechBubble(text: string) {
   bubble.innerText = text;
   bubble.classList.add('visible');
-  avatar.classList.add('speaking');
+  startSpeaking();
 
   clearTimeout(currentTimeout);
   // Hide speech bubble after 5 seconds
   currentTimeout = setTimeout(() => {
     bubble.classList.remove('visible');
-    avatar.classList.remove('speaking');
+    stopSpeaking();
   }, 5000);
 }
 
-// [TODO] Animations
-// [TODO] TTS
-// [TODO] Activities
+// [TO DO] TTS
+// [TO DO] Activities
