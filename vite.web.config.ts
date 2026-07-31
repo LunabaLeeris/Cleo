@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 
-// Vite configuration file for the web playground application.
-// Specifies web/index.html as the main entry point and dist as output directory.
+// Vite configuration for CLEO web application target.
+// Bundles index.html (Playground), marketplace.html, and blog.html to dist output.
 export default defineConfig({
   root: resolve(__dirname, 'web'),
   publicDir: resolve(__dirname, 'public'),
@@ -12,6 +12,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'web/index.html'),
+        marketplace: resolve(__dirname, 'web/marketplace.html'),
+        blog: resolve(__dirname, 'web/blog.html'),
       },
     },
   },

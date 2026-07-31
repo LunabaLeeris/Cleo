@@ -116,6 +116,59 @@ body {
   margin-left: 0.2rem;
 }
 
+/* Navigation Tabs */
+.app-nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-pixel);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  background: var(--bg-card-secondary);
+  border: 2px solid var(--border-pixel);
+  box-shadow: 2px 2px 0px var(--border-pixel);
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.15s ease;
+}
+
+.nav-tab:hover {
+  background: #ffffff;
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0px var(--border-pixel);
+}
+
+.nav-tab.active {
+  background: #ffffff;
+  border-color: var(--border-pixel);
+  box-shadow: inset 2px 2px 0px rgba(0, 0, 0, 0.08);
+  color: var(--accent-primary);
+}
+
+.nav-tab.disabled-tab {
+  opacity: 0.65;
+  filter: grayscale(0.4);
+}
+
+.nav-badge {
+  font-size: 0.7rem;
+  background: #fef08a;
+  color: #854d0e;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--border-pixel);
+}
+
 .header-actions {
   display: flex;
   align-items: center;
@@ -729,6 +782,45 @@ input[type="range"] { accent-color: var(--accent-primary); width: 100%; cursor: 
 
 /* Footer */
 .app-footer { text-align: center; font-family: var(--font-pixel); font-size: 0.75rem; color: var(--text-muted); padding: 0.6rem 0 0.2rem; }
+
+/* Multi-page Template Layouts */
+.page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.dev-banner-card {
+  gap: 1rem;
+}
+
+.dev-banner-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.banner-icon { font-size: 2.2rem; }
+.banner-title { font-family: var(--font-pixel); font-size: 1.25rem; font-weight: 700; color: var(--text-dark); }
+.banner-subtitle { font-size: 0.9rem; color: var(--text-muted); margin-top: 0.2rem; }
+.banner-desc { font-size: 0.9rem; line-height: 1.5; color: var(--text-dark); }
+
+.return-btn {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  width: fit-content;
+  text-decoration: none;
+}
+
+.section-subtitle {
+  font-family: var(--font-pixel);
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  color: var(--text-dark);
+}
 
 /* Mobile Adjustments (< 600px) */
 @media (max-width: 600px) {
