@@ -1,6 +1,6 @@
-import { AvatarCompositor, defaultAvatarConfig, CleoExpression } from '../src/avatar';
+import { AvatarCompositor, defaultAvatarConfig, ChleoExpression } from '../src/avatar';
 
-// Main initialization procedure for CLEO Web Interactive Playground.
+// Main initialization procedure for CHLEO Web Interactive Playground.
 (async () => {
   const canvas = document.getElementById('web-avatar-canvas') as HTMLCanvasElement;
   const bubble = document.getElementById('web-speech-bubble') as HTMLDivElement;
@@ -22,7 +22,7 @@ import { AvatarCompositor, defaultAvatarConfig, CleoExpression } from '../src/av
   console.log('[WebMain] AvatarCompositor initialized on web testbed.');
 
   // Global state variables.
-  let currentExpression: CleoExpression = 'idle';
+  let currentExpression: ChleoExpression = 'idle';
   let speechTimer: number | null = null;
   let bubbleTimer: number | null = null;
 
@@ -32,7 +32,7 @@ import { AvatarCompositor, defaultAvatarConfig, CleoExpression } from '../src/av
   }, 100);
 
   // Set active expression and update UI label.
-  function setExpression(expr: CleoExpression, displayTitle?: string): void {
+  function setExpression(expr: ChleoExpression, displayTitle?: string): void {
     currentExpression = expr;
     compositor.setExpression(currentExpression);
     activeLabel.innerText = displayTitle || (expr.charAt(0).toUpperCase() + expr.slice(1).replace('_', ' '));

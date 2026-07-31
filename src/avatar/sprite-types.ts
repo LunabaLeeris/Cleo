@@ -19,9 +19,9 @@ export interface Vec2 {
 export type LoopMode = 'infinite' | 'once' | number;
 
 /**
- * Supported high-level expression presets for CLEO reactions.
+ * Supported high-level expression presets for CHLEO reactions.
  */
-export type CleoExpression =
+export type ChleoExpression =
   | 'idle'
   | 'blink'
   | 'speak'
@@ -30,6 +30,9 @@ export type CleoExpression =
   | 'angry'
   | 'yawn'
   | 'question';
+
+/** Alias for backward compatibility during CHLEO rebranding. */
+export type CleoExpression = ChleoExpression;
 
 /**
  * Animation definition for an individual avatar part.
@@ -75,7 +78,7 @@ export interface PartConfig {
 export type KeyframeOffsetMap = Record<number, Partial<Record<PartName, Vec2>>>;
 
 /**
- * Complete configuration structure for CLEO avatar composition.
+ * Complete configuration structure for CHLEO avatar composition.
  */
 export interface AvatarConfig {
   /** Canvas width in sprite pixels before scale factor. */
@@ -84,18 +87,15 @@ export interface AvatarConfig {
   /** Canvas height in sprite pixels before scale factor. */
   canvasHeight: number;
 
-  /** Total frame count in one master cycle. */
-  masterFrameCount: number;
-
-  /** Master cycle duration in milliseconds. */
-  cycleDurationMs: number;
-
-  /** Integer render scale factor for pixel graphics. */
+  /** Render scale multiplier factor. */
   scale: number;
 
-  /** Part configuration definitions indexed by PartName. */
-  parts: Record<PartName, PartConfig>;
+  /** Keyframe offsets keyed by master frame index. */
+  globalKeyframeOffsets?: KeyframeOffsetMap;
 
-  /** Keyframe offset map to sync part movements. */
-  globalKeyframeOffsets: KeyframeOffsetMap;
+  /** Cycle duration in milliseconds. Default duration is 1000ms. */
+  cycleDurationMs?: number;
+
+  /** Avatar part configuration map. */
+  parts: Record<PartName, PartConfig>;
 }
