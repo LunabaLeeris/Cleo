@@ -30,86 +30,76 @@ body {
   position: relative;
 }
 
-/* Speech Bubble */
-.speech-bubble {
-  position: absolute;
-  bottom: 190px;
-  /* Positions bubble right above the avatar */
-  left: 15px;
-  right: 15px;
-  max-height: 120px;
-  background: #140e24;
-  /* Solid opaque color resolves the transparent window rendering bug */
-  border: 1px solid var(--border-glow);
-  box-shadow:
-    0 8px 32px 0 rgba(0, 0, 0, 0.4),
-    0 0 15px rgba(138, 75, 243, 0.25);
-  border-radius: 18px;
-  padding: 14px 18px;
-  color: #f1ecf9;
-  font-size: 13px;
-  line-height: 1.5;
-  text-align: center;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(12px) scale(0.95);
-  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 10;
-  overflow-y: auto;
-  scrollbar-width: none;
-  /* Firefox */
-}
-
-.speech-bubble::-webkit-scrollbar {
-  display: none;
-  /* Chrome, Safari, and Electron */
-}
-
-.speech-bubble.visible {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0) scale(1);
-}
-
-/* Arrow for Speech Bubble */
-.speech-bubble::after {
-  content: '';
-  position: absolute;
-  bottom: -8px;
-  left: 50%;
-  transform: translateX(-50%) rotate(45deg);
-  width: 16px;
-  height: 16px;
-  background: #140e24;
-  border-right: 1px solid var(--border-glow);
-  border-bottom: 1px solid var(--border-glow);
-  box-sizing: border-box;
-}
-
 /* Avatar Container */
 .avatar-container {
-  width: 140px;
-  height: 170px;
+  width: auto;
+  height: auto;
   display: flex;
+  flex-direction: column;
   justify-content: center;
-  align-items: flex-end;
+  align-items: center;
   position: relative;
   cursor: grab;
   margin-bottom: 10px;
-  animation: float 4s ease-in-out infinite; /* Keep the widget bobbing floating effect */
+  animation: float 4s ease-in-out infinite;
 }
 
 .avatar-container:active {
   cursor: grabbing;
 }
 
+/* Speech Bubble (Anchored directly above CLEO's head) */
+.speech-bubble {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(8px) scale(0.95);
+  min-width: 130px;
+  max-width: 240px;
+  background: #140e24;
+  border: 1px solid var(--border-glow);
+  box-shadow:
+    0 8px 32px 0 rgba(0, 0, 0, 0.4),
+    0 0 15px rgba(138, 75, 243, 0.25);
+  border-radius: 14px;
+  padding: 10px 14px;
+  color: #f1ecf9;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 20;
+}
+
+.speech-bubble.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+/* Arrow pointing down at top of CLEO's head */
+.speech-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 12px;
+  height: 12px;
+  background: #140e24;
+  border-right: 1px solid var(--border-glow);
+  border-bottom: 1px solid var(--border-glow);
+  box-sizing: border-box;
+}
+
 /* Pixel Avatar Canvas */
 #avatar-canvas {
+  display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  /* Canvas size is set programmatically by AvatarCompositor.
-     CSS transform scales it up for display while keeping pixel-perfect rendering. */
   transform-origin: bottom center;
 }
 
@@ -118,11 +108,9 @@ body {
   0% {
     transform: translateY(0px);
   }
-
   50% {
     transform: translateY(-8px);
   }
-
   100% {
     transform: translateY(0px);
   }

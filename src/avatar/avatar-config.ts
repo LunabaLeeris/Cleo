@@ -1,17 +1,5 @@
 import type { AvatarConfig } from './sprite-types';
 
-/**
- * Default avatar configuration with placeholder values.
- *
- * ## Sprite sheet format
- * Each animation expects a horizontal strip PNG where frames are laid out
- * left-to-right. For example, a 12-frame 64×64 animation = 768×64 image.
- * 
- * infinite - plays infinitely
- * once     - plays only once
- * number   - plays for a specific number of times
- */
-
 import SPRITE_BODY_IDLE from '../assets/sprites/body/body_idle.png';
 import SPRITE_EYES_IDLE from '../assets/sprites/eyes/eyes_idle.png';
 import SPRITE_EYES_BLINK from '../assets/sprites/eyes/eyes_blink.png';
@@ -26,7 +14,7 @@ export const defaultAvatarConfig: AvatarConfig = {
   canvasWidth: 64,
   canvasHeight: 64,
   masterFrameCount: 6,
-  cycleDurationMs: 1000, // 6 frames in 1 second ≈ ~167ms per tick
+  cycleDurationMs: 1000,
   scale: 2,
 
   parts: {
@@ -34,6 +22,13 @@ export const defaultAvatarConfig: AvatarConfig = {
       basePosition: { x: 0, y: 0 },
       animations: {
         idle: {
+          src: SPRITE_BODY_IDLE,
+          frameCount: 6,
+          frameWidth: 64,
+          frameHeight: 64,
+          loop: 'infinite',
+        },
+        sleep: {
           src: SPRITE_BODY_IDLE,
           frameCount: 6,
           frameWidth: 64,
@@ -61,6 +56,20 @@ export const defaultAvatarConfig: AvatarConfig = {
           frameHeight: 64,
           loop: 'once',
         },
+        close_eyes: {
+          src: SPRITE_EYES_BLINK,
+          frameCount: 3,
+          frameWidth: 64,
+          frameHeight: 64,
+          loop: 'infinite',
+        },
+        sleep: {
+          src: SPRITE_EYES_BLINK,
+          frameCount: 3,
+          frameWidth: 64,
+          frameHeight: 64,
+          loop: 'infinite',
+        },
       },
       defaultAnimation: 'idle',
     },
@@ -80,7 +89,14 @@ export const defaultAvatarConfig: AvatarConfig = {
           frameCount: 6,
           frameWidth: 64,
           frameHeight: 64,
-          loop: 'infinite'
+          loop: 'infinite',
+        },
+        yawn: {
+          src: SPRITE_MOUTH_SPEAK,
+          frameCount: 6,
+          frameWidth: 64,
+          frameHeight: 64,
+          loop: 'once',
         },
       },
       defaultAnimation: 'idle',
@@ -96,11 +112,24 @@ export const defaultAvatarConfig: AvatarConfig = {
           frameHeight: 64,
           loop: 'infinite',
         },
-        question: {
-          src: SPRITE_BROWS_QUESTION,
-          frameCount: 6,
+        angry: {
+          src: SPRITE_BROWS_IDLE,
+          frameCount: 1,
           frameWidth: 64,
           frameHeight: 64,
+          frameOffsets: [
+            { x: 0, y: 1 },
+          ],
+          loop: 'infinite',
+        },
+        question: {
+          src: SPRITE_BROWS_IDLE,
+          frameCount: 1,
+          frameWidth: 64,
+          frameHeight: 64,
+          frameOffsets: [
+            { x: 0, y: -1 },
+          ],
           loop: 'once',
         },
       },
@@ -108,9 +137,7 @@ export const defaultAvatarConfig: AvatarConfig = {
     },
   },
 
-  // These shift non-body parts to follow the body's breathing motion.
-  // Master frame indices 0–5 (6-frame cycle).
-  // Only frames that differ from {x:0, y:0} are listed.
+  // Keyframe offsets shift non-body parts to sync breathing motion.
   globalKeyframeOffsets: {
     3: {
       eyes: { x: 0, y: 1 },
@@ -126,6 +153,6 @@ export const defaultAvatarConfig: AvatarConfig = {
       eyes: { x: 0, y: 1 },
       mouth: { x: 0, y: 1 },
       eyebrows: { x: 0, y: 1 },
-    }
+    },
   },
 };

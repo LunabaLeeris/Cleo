@@ -9,5 +9,6 @@ export type {
   PartConfig,
   KeyframeOffsetMap,
   AvatarConfig,
+  CleoExpression,
 } from './sprite-types';
 export { PART_RENDER_ORDER } from './sprite-types';

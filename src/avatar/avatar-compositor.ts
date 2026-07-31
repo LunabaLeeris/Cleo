@@ -3,70 +3,51 @@ import type {
   PartName,
   Vec2,
   AnimationDef,
-  KeyframeOffsetMap,
   LoopMode,
+  CleoExpression,
 } from './sprite-types';
 import { PART_RENDER_ORDER } from './sprite-types';
 import { preloadAvatarSprites } from './sprite-loader';
 
 /**
- * Runtime state for a single part's current animation.
+ * Runtime animation state for a single avatar part.
  */
 interface PartAnimationState {
-  /** Key into PartConfig.animations for the currently playing animation. */
+  /** Name of the active animation key. */
   currentAnim: string;
 
-  /**
-   * Local frame counter within the current animation.
-   * Advances by 1 each master tick. Resets to 0 when animation changes.
-   */
+  /** Local frame counter within active animation. */
   localFrame: number;
 
-  /**
-   * How many complete cycles of this animation have been played.
-   * A "cycle" = localFrame has advanced through all frameCount frames once.
-   */
+  /** Total completed animation loop cycles. */
   completedCycles: number;
 
-  /**
-   * Resolved loop mode for the current animation.
-   * Cached here so no need to look it up every tick.
-   */
+  /** Active loop behavior mode. */
   loopMode: LoopMode;
 }
 
 /**
- * 
- * Orchestrates a global N-frame master clock. Each avatar part (body, eyes,
- * mouth, eyebrows) runs its own animation independently. Parts are composed
- * onto a single <canvas> each tick.
- *
- * ## Key behaviors:
- * - Calling `playAnimation(part, anim)` always starts the new animation from
- *   frame 0, regardless of the current master frame.
- * - The global master frame counter is NEVER reset when a part changes animation.
- * - Global keyframe offsets (e.g., breathing dip) are applied based on the master
- *   frame, so face parts always track the body.
- * - Animations with `loop: 'once'` or `loop: N` auto-revert to the part's
- *   default animation when finished.
+ * Orchestrates rendering clock and avatar composition on HTML5 Canvas.
+ * Combines body, eyes, mouth, and eyebrows layers.
  */
 export class AvatarCompositor {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private config: AvatarConfig;
 
-  /** Master frame counter. Wraps every masterFrameCount ticks. */
+  /** Global master frame counter. */
   private globalFrame = 0;
 
-  /** Per-part animation state. */
+  /** Per-part runtime animation state. */
   private partStates: Record<PartName, PartAnimationState>;
 
+  /** Preloaded HTML Image element cache. */
   private images: Map<string, HTMLImageElement> = new Map();
 
-  /** Handle for the tick interval (null when stopped). */
+  /** Timer handle for render loop. */
   private tickInterval: ReturnType<typeof setInterval> | null = null;
 
-  /** Whether the compositor has been initialized (sprites loaded). */
+  /** Status flag for initialization completion. */
   private initialized = false;
 
   constructor(canvas: HTMLCanvasElement, config: AvatarConfig) {
@@ -75,18 +56,12 @@ export class AvatarCompositor {
 
     const ctx = canvas.getContext('2d');
     if (!ctx) {
-      throw new Error('Failed to get 2D rendering context from canvas.');
+      throw new Error('Failed to obtain 2D context from canvas.');
     }
     this.ctx = ctx;
 
-    // Set canvas dimensions (scaled)
-    this.canvas.width = config.canvasWidth * config.scale;
-    this.canvas.height = config.canvasHeight * config.scale;
+    this.applyCanvasDimensions();
 
-    // Disable image smoothing for crisp pixel art
-    this.ctx.imageSmoothingEnabled = false;
-
-    // Initialize all parts to their default animations
     this.partStates = {} as Record<PartName, PartAnimationState>;
     for (const partName of PART_RENDER_ORDER) {
       const partConfig = config.parts[partName];
@@ -102,39 +77,38 @@ export class AvatarCompositor {
   }
 
   /**
-   * Load all sprite sheets and start the animation loop.
-   * Safe to call multiple times — subsequent calls are no-ops.
+   * Apply configured width, height, and scale factor to the canvas.
+   */
+  private applyCanvasDimensions(): void {
+    this.canvas.width = this.config.canvasWidth * this.config.scale;
+    this.canvas.height = this.config.canvasHeight * this.config.scale;
+    this.ctx.imageSmoothingEnabled = false;
+  }
+
+  /**
+   * Load sprite sheet images and prepare compositor.
    */
   async init(): Promise<void> {
     if (this.initialized) return;
 
     this.images = await preloadAvatarSprites(this.config);
     this.initialized = true;
-
-    for (const [src, img] of this.images.entries()) {
-      console.log(
-        `[AvatarCompositor] Loaded: ${src} (${img.naturalWidth}×${img.naturalHeight})`
-      );
-    }
-    console.log(`[AvatarCompositor] Initialized with ${this.images.size} sprites.`);
+    console.log(`[AvatarCompositor] Loaded ${this.images.size} sprite assets.`);
   }
 
   /**
-   * Start the animation tick loop.
-   * Must call `init()` first to load sprites.
+   * Start the animation tick interval loop.
    */
   start(): void {
-    if (this.tickInterval !== null) return; // Already running
+    if (this.tickInterval !== null) return;
 
     const tickMs = this.config.cycleDurationMs / this.config.masterFrameCount;
     this.tickInterval = setInterval(() => this.tick(), tickMs);
-
-    // Draw the first frame immediately
     this.render();
   }
 
   /**
-   * Stop the animation tick loop. The canvas retains its last frame.
+   * Stop the animation tick interval loop.
    */
   stop(): void {
     if (this.tickInterval !== null) {
@@ -144,24 +118,33 @@ export class AvatarCompositor {
   }
 
   /**
-   * Play a named animation on a specific part.
-   *
-   * The animation ALWAYS starts from frame 0, regardless of the current
-   * master frame position. The global frame counter is NOT reset.
-   *
-   * @param part      Which part to animate.
-   * @param animName  Key into the part's animations map.
-   * @param loopOverride  Optional override for the animation's loop mode.
-   *                      If not provided, uses the AnimationDef's `loop` field
-   *                      (defaulting to 'infinite').
+   * Change cycle duration in milliseconds at runtime.
+   */
+  setCycleDurationMs(durationMs: number): void {
+    this.config.cycleDurationMs = Math.max(100, durationMs);
+    if (this.tickInterval !== null) {
+      this.stop();
+      this.start();
+    }
+  }
+
+  /**
+   * Change render scale factor at runtime.
+   */
+  setScale(scale: number): void {
+    this.config.scale = Math.max(1, scale);
+    this.applyCanvasDimensions();
+    this.render();
+  }
+
+  /**
+   * Play a named animation sequence on a specific avatar part.
    */
   playAnimation(part: PartName, animName: string, loopOverride?: LoopMode): void {
     const partConfig = this.config.parts[part];
     const animDef = partConfig.animations[animName];
     if (!animDef) {
-      console.warn(
-        `[AvatarCompositor] Animation "${animName}" not found for part "${part}".`
-      );
+      console.warn(`[AvatarCompositor] Animation "${animName}" missing for part "${part}".`);
       return;
     }
 
@@ -170,11 +153,50 @@ export class AvatarCompositor {
     state.localFrame = 0;
     state.completedCycles = 0;
     state.loopMode = loopOverride ?? animDef.loop ?? 'infinite';
+
+    // Reset master clock to 0 when body animation starts or restarts.
+    if (part === 'body') {
+      this.globalFrame = 0;
+    }
   }
 
   /**
-   * Revert a part to its default (idle) animation.
-   * Equivalent to `playAnimation(part, partConfig.defaultAnimation)` with infinite loop.
+   * Trigger high-level CLEO expression preset across layers.
+   */
+  setExpression(expression: CleoExpression): void {
+    switch (expression) {
+      case 'idle':
+        this.resetAll();
+        break;
+      case 'blink':
+        this.playAnimation('eyes', 'blink', 'once');
+        break;
+      case 'speak':
+        this.playAnimation('mouth', 'speak', 'infinite');
+        break;
+      case 'sleep':
+        this.playAnimation('eyes', 'sleep', 'infinite');
+        this.playAnimation('mouth', 'idle', 'infinite');
+        this.playAnimation('eyebrows', 'idle', 'infinite');
+        break;
+      case 'close_eyes':
+        this.playAnimation('eyes', 'close_eyes', 'infinite');
+        break;
+      case 'angry':
+        this.playAnimation('eyebrows', 'angry', 'infinite');
+        break;
+      case 'yawn':
+        this.playAnimation('mouth', 'yawn', 'once');
+        this.playAnimation('eyes', 'blink', 'once');
+        break;
+      case 'question':
+        this.playAnimation('eyebrows', 'question', 'once');
+        break;
+    }
+  }
+
+  /**
+   * Reset one part to default animation state.
    */
   resetPart(part: PartName): void {
     const defaultAnim = this.config.parts[part].defaultAnimation;
@@ -182,44 +204,32 @@ export class AvatarCompositor {
   }
 
   /**
-   * Revert ALL parts to their default animations.
+   * Reset all avatar parts to default animation states.
    */
   resetAll(): void {
+    // Reset global master frame clock to stay in sync with body frame 0.
+    this.globalFrame = 0;
     for (const part of PART_RENDER_ORDER) {
       this.resetPart(part);
     }
   }
 
   /**
-   * Update a part's base position at runtime.
-   * Useful for repositioning parts after loading different sprite sizes.
-   */
-  setPartBasePosition(part: PartName, position: Vec2): void {
-    this.config.parts[part].basePosition = { ...position };
-  }
-
-  /**
-   * Replace the global keyframe offset map at runtime.
-   */
-  setGlobalKeyframeOffsets(offsets: KeyframeOffsetMap): void {
-    this.config.globalKeyframeOffsets = offsets;
-  }
-
-  /**
-   * Get the current animation name for a part.
+   * Query active animation name for a specified part.
    */
   getPartAnimation(part: PartName): string {
     return this.partStates[part].currentAnim;
   }
 
   /**
-   * Get the current global master frame (0–11).
+   * Query active master frame index.
    */
   getGlobalFrame(): number {
     return this.globalFrame;
   }
+
   /**
-   * Advance one tick: render the current frame, then advance all counters.
+   * Execute single tick: render current frame then advance frame counters.
    */
   private tick(): void {
     this.render();
@@ -227,7 +237,7 @@ export class AvatarCompositor {
   }
 
   /**
-   * Render the current state of all parts onto the canvas.
+   * Render all avatar parts on canvas in bottom-to-top order.
    */
   private render(): void {
     const { canvasWidth, canvasHeight, scale } = this.config;
@@ -239,24 +249,20 @@ export class AvatarCompositor {
   }
 
   /**
-   * Draw a single part at its computed position for the current frame.
+   * Draw single part sprite frame at calculated coordinates.
    */
   private drawPart(part: PartName): void {
     const partConfig = this.config.parts[part];
     const state = this.partStates[part];
-    const animDef: AnimationDef | undefined =
-      partConfig.animations[state.currentAnim];
+    const animDef: AnimationDef | undefined = partConfig.animations[state.currentAnim];
 
     if (!animDef || !animDef.src) return;
 
-    // Get the loaded image
     const image = this.images.get(animDef.src);
-    if (!image) return; // Sprite not loaded — skip silently
+    if (!image) return;
 
-    // Determine which frame of the animation to show
     const animFrame = state.localFrame % animDef.frameCount;
 
-    // Compute final position: base + global offset + animation offset
     const base = partConfig.basePosition;
     const globalOffset = this.getGlobalOffset(part);
     const animOffset = animDef.frameOffsets?.[animFrame] ?? { x: 0, y: 0 };
@@ -266,15 +272,12 @@ export class AvatarCompositor {
 
     const { scale } = this.config;
 
-    // Draw the correct frame from the horizontal sprite strip
     this.ctx.drawImage(
       image,
-      // Source rectangle (from the sprite sheet)
       animFrame * animDef.frameWidth,
       0,
       animDef.frameWidth,
       animDef.frameHeight,
-      // Destination rectangle (on the canvas, scaled)
       finalX * scale,
       finalY * scale,
       animDef.frameWidth * scale,
@@ -283,7 +286,7 @@ export class AvatarCompositor {
   }
 
   /**
-   * Get the global keyframe offset for a part at the current master frame.
+   * Retrieve global keyframe offset for a part at current master frame.
    */
   private getGlobalOffset(part: PartName): Vec2 {
     const masterFrame = this.globalFrame % this.config.masterFrameCount;
@@ -293,14 +296,11 @@ export class AvatarCompositor {
   }
 
   /**
-   * Advance all frame counters after rendering.
-   * Handles loop completion and auto-revert to default animations.
+   * Advance global frame counter and part local frame counters.
    */
   private advanceFrames(): void {
-    // Advance global master frame
     this.globalFrame = (this.globalFrame + 1) % this.config.masterFrameCount;
 
-    // Advance each part's local frame
     for (const part of PART_RENDER_ORDER) {
       const state = this.partStates[part];
       const animDef = this.config.parts[part].animations[state.currentAnim];
@@ -308,22 +308,17 @@ export class AvatarCompositor {
 
       state.localFrame++;
 
-      // Single-frame animations just hold frame 0 — nothing to advance.
       if (animDef.frameCount <= 1) {
         state.localFrame = 0;
         continue;
       }
 
-      // Check if we just completed a full cycle of this animation
       if (state.localFrame >= animDef.frameCount) {
         state.completedCycles++;
 
-        // Determine if we should stop and revert to default
-        const shouldRevert = this.shouldRevertToDefault(state);
-        if (shouldRevert) {
+        if (this.shouldRevertToDefault(state)) {
           this.resetPart(part);
         } else {
-          // Wrap localFrame so it doesn't grow unbounded
           state.localFrame = state.localFrame % animDef.frameCount;
         }
       }
@@ -331,22 +326,14 @@ export class AvatarCompositor {
   }
 
   /**
-   * Check if a part's animation has finished its loop quota
-   * and should revert to the default animation.
+   * Determine whether active part animation completed configured loop quota.
    */
   private shouldRevertToDefault(state: PartAnimationState): boolean {
     const { loopMode, completedCycles } = state;
 
-    if (loopMode === 'infinite') {
-      return false;
-    }
-    if (loopMode === 'once') {
-      return completedCycles >= 1;
-    }
-    // Numeric loop count
-    if (typeof loopMode === 'number') {
-      return completedCycles >= loopMode;
-    }
+    if (loopMode === 'infinite') return false;
+    if (loopMode === 'once') return completedCycles >= 1;
+    if (typeof loopMode === 'number') return completedCycles >= loopMode;
 
     return false;
   }

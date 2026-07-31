@@ -38,9 +38,32 @@ Cleo is an interactive desktop and browser companion designed to keep you on tra
 
 ---
 
+## 🛍️ Community Marketplace *(In Development)*
+
+> 🔒 **Status: Coming Soon** — The marketplace is currently under construction!
+
+The CLEO Marketplace is our way of interacting with the community. Creator and user community members can share or download content for free or premium downloads:
+
+* 🎨 **Customizations:** Custom visual outfits, sprite skins, pixel color schemes, and UI themes.
+* 🍱 **Foods:** Treat Cleo with interactive digital snacks, meals, and drinks to boost her mood.
+* 🧩 **MODS:** Community-created modifications and experimental features that alter Cleo's behavior outside main releases.
+* 🧠 **LLMs & Brains:** Swap Cleo's AI brain models, custom system prompts, and personality fine-tunes.
+
+---
+
 ## 🤝 Contributing
 
 Contributions are always welcome! Whether it's squashing bugs, adding new features, or improving the sprite system, feel free to open an issue or submit a pull request.
+
+---
+
+## 📬 Contact Me
+
+Connect with the creator:
+
+* 👤 **Facebook:** [Christian Lee Lunaba](https://www.facebook.com/qwersdfzxc)
+* 💼 **LinkedIn:** [Christian Lee Lunaba](https://www.linkedin.com/in/christianlee-lunaba-72229025b/)
+* 🐙 **GitHub:** [LunabaLeeris](https://github.com/LunabaLeeris)
 
 ---
 
