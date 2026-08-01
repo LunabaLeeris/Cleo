@@ -46,8 +46,14 @@ export async function preloadAvatarSprites(
   // Collect all unique image paths
   for (const partConfig of Object.values(config.parts)) {
     for (const animDef of Object.values(partConfig.animations)) {
-      if (animDef.src) {
+      if (animDef.type === 'spritesheet' && animDef.src) {
         allSrcs.add(animDef.src);
+      } else if (animDef.type === 'framearray' && animDef.srcArray) {
+        for (const src of animDef.srcArray) {
+          if (src) {
+            allSrcs.add(src);
+          }
+        }
       }
     }
   }
@@ -63,14 +69,50 @@ export async function preloadAvatarSprites(
   for (const result of results) {
     if (result.status === 'fulfilled') {
       loaded.set(result.value.src, result.value.img);
+    } else {
+      console.warn(`[SpriteLoader] Failed to preload image: ${result.reason}`);
     }
-    // Failures already logged by loadImage
   }
 
   console.log(
-    `[SpriteLoader] Loaded ${loaded.size}/${allSrcs.size} sprite sheets.`
+    `[SpriteLoader] Preloaded ${loaded.size}/${allSrcs.size} sprite assets.`
   );
   return loaded;
+}
+
+/**
+ * Ensure a set of image URLs are loaded into the target map.
+ * Skips images already present in the map. Loads missing ones in parallel.
+ * Used by the compositor to load dynamically composed frame images
+ * that were not part of the initial preload.
+ *
+ * @param srcs - Array of image URLs to ensure are loaded.
+ * @param targetMap - The compositor's live image map to populate.
+ */
+export async function ensureImagesLoaded(
+  srcs: string[],
+  targetMap: Map<string, HTMLImageElement>
+): Promise<void> {
+  const missing = srcs.filter(src => src && !targetMap.has(src));
+  if (missing.length === 0) return;
+
+  const uniqueMissing = [...new Set(missing)];
+  console.log(`[SpriteLoader] Loading ${uniqueMissing.length} new frame image(s) on demand.`);
+
+  const results = await Promise.allSettled(
+    uniqueMissing.map(async (src) => {
+      const img = await loadImage(src);
+      return { src, img };
+    })
+  );
+
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      targetMap.set(result.value.src, result.value.img);
+    } else {
+      console.warn(`[SpriteLoader] Failed to load on-demand image: ${result.reason}`);
+    }
+  }
 }
 
 /**

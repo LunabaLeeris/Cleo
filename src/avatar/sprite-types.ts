@@ -36,31 +36,27 @@ export type CleoExpression = ChleoExpression;
 
 /**
  * Animation definition for an individual avatar part.
- * Sprite sheet uses horizontal strip image format.
+ * Sprite sheet uses horizontal strip image format or an array of src
  */
-export interface AnimationDef {
-  /** Path to sprite sheet image asset. */
-  src: string;
-
-  /** Total frame count in the horizontal strip. */
-  frameCount: number;
-
-  /** Frame width in pixels. */
-  frameWidth: number;
-
-  /** Frame height in pixels. */
-  frameHeight: number;
-
-  /**
-   * Per-frame position offsets for this animation.
-   * Offsets apply relative to the base position.
-   */
+interface BaseAnimationDef {
   frameOffsets?: Vec2[];
-
-  /** Loop behavior for this animation definition. */
   loop?: LoopMode;
 }
 
+export interface SpriteSheetDef extends BaseAnimationDef {
+  type: 'spritesheet';
+  src: string;
+  frameCount: number;
+  frameWidth: number;
+  frameHeight: number;
+}
+
+export interface FrameArrayDef extends BaseAnimationDef {
+  type: 'framearray';
+  srcArray: string[] | null;
+}
+
+export type AnimationDef = SpriteSheetDef | FrameArrayDef;
 /**
  * Configuration structure for one avatar part.
  */
