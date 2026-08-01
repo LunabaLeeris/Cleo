@@ -143,7 +143,7 @@ export class AvatarCompositor {
    */
   playAnimation(part: PartName, animName: string, loopOverride?: LoopMode): void {
     const partConfig = this.config.parts[part];
-    const animDef = partConfig.animations[animName];
+    const animDef = partConfig?.animations?.[animName];
     if (!animDef) {
       console.warn(`[AvatarCompositor] Animation "${animName}" missing for part "${part}".`);
       return;
@@ -154,6 +154,8 @@ export class AvatarCompositor {
     state.localFrame = 0;
     state.completedCycles = 0;
     state.loopMode = loopOverride ?? animDef.loop ?? 'infinite';
+
+    console.log(`[AvatarCompositor] Part "${part}" playing animation "${animName}" (loopMode: ${state.loopMode})`);
 
     // Reset master clock to 0 when body animation starts or restarts.
     if (part === 'body') {
@@ -257,12 +259,51 @@ export class AvatarCompositor {
     const state = this.partStates[part];
     const animDef: AnimationDef | undefined = partConfig.animations[state.currentAnim];
 
-    if (!animDef || !animDef.src) return;
+    if (!animDef) {
+      console.warn(`[AvatarCompositor] Missing animation definition "${state.currentAnim}" for part "${part}".`);
+      return;
+    }
 
-    const image = this.images.get(animDef.src);
-    if (!image) return;
+    if ((animDef.type === 'spritesheet' && !animDef.src)
+      || (animDef.type === 'framearray' && (!animDef.srcArray || animDef.srcArray.length === 0))) {
+      console.warn(`[AvatarCompositor] Empty source in animation "${state.currentAnim}" for part "${part}".`);
+      return;
+    }
 
-    const animFrame = state.localFrame % animDef.frameCount;
+    let image: HTMLImageElement | undefined;
+    let animFrame = 0;
+    let drawWidth = 0;
+    let drawHeight = 0;
+    let sourceX = 0;
+
+    if (animDef.type === 'spritesheet' && animDef.src) {
+      image = this.images.get(animDef.src);
+      const frameCount = Math.max(1, animDef.frameCount);
+      animFrame = state.localFrame % frameCount;
+
+      drawWidth = animDef.frameWidth;
+      drawHeight = animDef.frameHeight;
+      sourceX = animFrame * animDef.frameWidth;
+    } else if (animDef.type === 'framearray' && animDef.srcArray && animDef.srcArray.length > 0) {
+      const frameCount = animDef.srcArray.length;
+      animFrame = state.localFrame % frameCount;
+      const src = animDef.srcArray[animFrame];
+      image = src ? this.images.get(src) : undefined;
+
+      if (image) {
+        drawWidth = image.width;
+        drawHeight = image.height;
+      }
+      sourceX = 0;
+    } else {
+      return;
+    }
+
+    if (!image) {
+      const targetSrc = animDef.type === 'spritesheet' ? animDef.src : animDef.srcArray?.[animFrame];
+      console.warn(`[AvatarCompositor] Image not found in cache for part "${part}" (anim: "${state.currentAnim}", frame: ${animFrame}, src: "${targetSrc}")`);
+      return;
+    }
 
     const base = partConfig.basePosition;
     const globalOffset = this.getGlobalOffset(part);
@@ -276,14 +317,14 @@ export class AvatarCompositor {
 
     this.ctx.drawImage(
       image,
-      animFrame * animDef.frameWidth,
+      sourceX,
       0,
-      animDef.frameWidth,
-      animDef.frameHeight,
+      drawWidth,
+      drawHeight,
       finalX * scale,
       finalY * scale,
-      animDef.frameWidth * scale,
-      animDef.frameHeight * scale
+      drawWidth * scale,
+      drawHeight * scale
     );
   }
 
@@ -292,7 +333,7 @@ export class AvatarCompositor {
    */
   private getGlobalOffset(part: PartName): Vec2 {
     const masterFrame = this.globalFrame % this.config.masterFrameCount;
-    const frameOffsets = this.config.globalKeyframeOffsets[masterFrame];
+    const frameOffsets = this.config.globalKeyframeOffsets?.[masterFrame];
     if (!frameOffsets) return { x: 0, y: 0 };
     return frameOffsets[part] ?? { x: 0, y: 0 };
   }
@@ -309,19 +350,22 @@ export class AvatarCompositor {
       if (!animDef) continue;
 
       state.localFrame++;
+      const frameCount = animDef.type === 'spritesheet'
+        ? animDef.frameCount
+        : (animDef.srcArray?.length ?? 0);
 
-      if (animDef.frameCount <= 1) {
+      if (frameCount <= 1) {
         state.localFrame = 0;
         continue;
       }
 
-      if (state.localFrame >= animDef.frameCount) {
+      if (state.localFrame >= frameCount) {
         state.completedCycles++;
 
         if (this.shouldRevertToDefault(state)) {
           this.resetPart(part);
         } else {
-          state.localFrame = state.localFrame % animDef.frameCount;
+          state.localFrame = state.localFrame % frameCount;
         }
       }
     }

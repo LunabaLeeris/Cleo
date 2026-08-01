@@ -22,6 +22,7 @@ export const defaultAvatarConfig: AvatarConfig = {
       basePosition: { x: 0, y: 0 },
       animations: {
         idle: {
+          type: "spritesheet",
           src: SPRITE_BODY_IDLE,
           frameCount: 6,
           frameWidth: 64,
@@ -29,6 +30,7 @@ export const defaultAvatarConfig: AvatarConfig = {
           loop: 'infinite',
         },
         sleep: {
+          type: "spritesheet",
           src: SPRITE_BODY_IDLE,
           frameCount: 6,
           frameWidth: 64,
@@ -43,6 +45,7 @@ export const defaultAvatarConfig: AvatarConfig = {
       basePosition: { x: 0, y: 0 },
       animations: {
         idle: {
+          type: "spritesheet",
           src: SPRITE_EYES_IDLE,
           frameCount: 1,
           frameWidth: 64,
@@ -50,6 +53,7 @@ export const defaultAvatarConfig: AvatarConfig = {
           loop: 'infinite',
         },
         blink: {
+          type: "spritesheet",
           src: SPRITE_EYES_BLINK,
           frameCount: 3,
           frameWidth: 64,
@@ -57,6 +61,7 @@ export const defaultAvatarConfig: AvatarConfig = {
           loop: 'once',
         },
         close_eyes: {
+          type: "spritesheet",
           src: SPRITE_EYES_BLINK,
           frameCount: 3,
           frameWidth: 64,
@@ -64,6 +69,7 @@ export const defaultAvatarConfig: AvatarConfig = {
           loop: 'infinite',
         },
         sleep: {
+          type: "spritesheet",
           src: SPRITE_EYES_BLINK,
           frameCount: 3,
           frameWidth: 64,
@@ -78,6 +84,7 @@ export const defaultAvatarConfig: AvatarConfig = {
       basePosition: { x: 0, y: 0 },
       animations: {
         idle: {
+          type: "spritesheet",
           src: SPRITE_MOUTH_IDLE,
           frameCount: 1,
           frameWidth: 64,
@@ -85,6 +92,7 @@ export const defaultAvatarConfig: AvatarConfig = {
           loop: 'infinite',
         },
         speak: {
+          type: "spritesheet",
           src: SPRITE_MOUTH_SPEAK,
           frameCount: 6,
           frameWidth: 64,
@@ -92,6 +100,7 @@ export const defaultAvatarConfig: AvatarConfig = {
           loop: 'infinite',
         },
         yawn: {
+          type: "spritesheet",
           src: SPRITE_MOUTH_SPEAK,
           frameCount: 6,
           frameWidth: 64,
@@ -106,6 +115,7 @@ export const defaultAvatarConfig: AvatarConfig = {
       basePosition: { x: 0, y: 0 },
       animations: {
         idle: {
+          type: "spritesheet",
           src: SPRITE_BROWS_IDLE,
           frameCount: 1,
           frameWidth: 64,
@@ -113,6 +123,7 @@ export const defaultAvatarConfig: AvatarConfig = {
           loop: 'infinite',
         },
         angry: {
+          type: "spritesheet",
           src: SPRITE_BROWS_IDLE,
           frameCount: 1,
           frameWidth: 64,
@@ -123,6 +134,7 @@ export const defaultAvatarConfig: AvatarConfig = {
           loop: 'infinite',
         },
         question: {
+          type: "spritesheet",
           src: SPRITE_BROWS_IDLE,
           frameCount: 1,
           frameWidth: 64,

@@ -46,8 +46,14 @@ export async function preloadAvatarSprites(
   // Collect all unique image paths
   for (const partConfig of Object.values(config.parts)) {
     for (const animDef of Object.values(partConfig.animations)) {
-      if (animDef.src) {
+      if (animDef.type === 'spritesheet' && animDef.src) {
         allSrcs.add(animDef.src);
+      } else if (animDef.type === 'framearray' && animDef.srcArray) {
+        for (const src of animDef.srcArray) {
+          if (src) {
+            allSrcs.add(src);
+          }
+        }
       }
     }
   }
@@ -63,12 +69,13 @@ export async function preloadAvatarSprites(
   for (const result of results) {
     if (result.status === 'fulfilled') {
       loaded.set(result.value.src, result.value.img);
+    } else {
+      console.warn(`[SpriteLoader] Failed to preload image: ${result.reason}`);
     }
-    // Failures already logged by loadImage
   }
 
   console.log(
-    `[SpriteLoader] Loaded ${loaded.size}/${allSrcs.size} sprite sheets.`
+    `[SpriteLoader] Preloaded ${loaded.size}/${allSrcs.size} sprite assets.`
   );
   return loaded;
 }
