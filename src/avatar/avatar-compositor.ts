@@ -3,11 +3,20 @@ import type {
   PartName,
   Vec2,
   AnimationDef,
+  FrameArrayDef,
   LoopMode,
   CleoExpression,
 } from './sprite-types';
 import { PART_RENDER_ORDER } from './sprite-types';
-import { preloadAvatarSprites } from './sprite-loader';
+import { preloadAvatarSprites, ensureImagesLoaded } from './sprite-loader';
+import {
+  tokenizeText,
+  getWordFrames,
+  getPauseFrameCount,
+  WORD_GAP_FRAMES,
+  MOUTH_FRAMES,
+  type WordFrames,
+} from './speak-frame-map';
 
 /**
  * Runtime animation state for a single avatar part.
@@ -139,6 +148,112 @@ export class AvatarCompositor {
   }
 
   /**
+   * Compose per-part frame arrays from input text.
+   *
+   * Pipeline:
+   *  1. Tokenize text into words + trailing punctuation.
+   *  2. Look up each word in the frame map (fallback to default).
+   *  3. Concatenate frames per part, inserting word-gap frames between words.
+   *  4. After punctuation marks (. ! ? , etc.), duplicate the last frame
+   *     N times to simulate a natural pause/hold.
+   *
+   * @returns A map of part names to their composed srcArray sequences.
+   *          Only parts that have frames are included.
+   */
+  composeSpeakAnimation(text: string): Partial<Record<PartName, string[]>> {
+    const tokens = tokenizeText(text);
+    if (tokens.length === 0) {
+      console.warn('[AvatarCompositor] composeSpeakAnimation called with empty text.');
+      return {};
+    }
+
+    console.log(`[AvatarCompositor] Composing speak animation for ${tokens.length} token(s):`,
+      tokens.map(t => `"${t.word}"${t.trailingPunctuation}`).join(' '));
+
+    // Accumulate frames per part across all tokens.
+    const composed: Partial<Record<PartName, string[]>> = {};
+
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+      const wordFrames: WordFrames = getWordFrames(token.word);
+
+      // Append each part's word frames.
+      for (const [part, frames] of Object.entries(wordFrames) as [PartName, string[]][]) {
+        if (!frames || frames.length === 0) continue;
+        if (!composed[part]) composed[part] = [];
+        composed[part]!.push(...frames);
+
+        // Apply punctuation pause: duplicate the last frame N times.
+        const pauseCount = getPauseFrameCount(token.trailingPunctuation);
+        if (pauseCount > 0) {
+          const lastFrame = frames[frames.length - 1];
+          for (let p = 0; p < pauseCount; p++) {
+            composed[part]!.push(lastFrame);
+          }
+        }
+      }
+
+      // Insert word-gap frames between words (not after the last word).
+      if (i < tokens.length - 1) {
+        for (const [part, gapFrames] of Object.entries(WORD_GAP_FRAMES) as [PartName, string[]][]) {
+          if (!gapFrames || gapFrames.length === 0) continue;
+          if (!composed[part]) composed[part] = [];
+          composed[part]!.push(...gapFrames);
+        }
+      }
+    }
+
+    // End with a closed mouth to return to neutral before idle revert.
+    if (composed.mouth && composed.mouth.length > 0) {
+      composed.mouth.push(MOUTH_FRAMES.closed);
+    }
+
+    // Log composed frame counts per part.
+    for (const [part, frames] of Object.entries(composed)) {
+      console.log(`[AvatarCompositor]   ${part}: ${frames.length} frames composed`);
+    }
+
+    return composed;
+  }
+
+  /**
+   * Inject composed frame arrays as transient 'speak' animation defs
+   * into the runtime config and play them once per affected part.
+   *
+   * Parts not present in the composed map are left untouched
+   * (they keep their current animation).
+   *
+   * New images not in the preload cache are loaded on demand.
+   */
+  async playSpeakSequence(composed: Partial<Record<PartName, string[]>>): Promise<void> {
+    // Collect all unique image URLs that need loading.
+    const allSrcs: string[] = [];
+    for (const frames of Object.values(composed)) {
+      if (frames) allSrcs.push(...frames);
+    }
+
+    // Load any images not yet cached.
+    await ensureImagesLoaded(allSrcs, this.images);
+
+    // Inject transient FrameArrayDef for each affected part and play.
+    for (const [part, srcArray] of Object.entries(composed) as [PartName, string[]][]) {
+      if (!srcArray || srcArray.length === 0) continue;
+
+      const speakDef: FrameArrayDef = {
+        type: 'framearray',
+        srcArray,
+        loop: 'once',
+      };
+
+      // Inject into the runtime config animations map.
+      this.config.parts[part].animations['speak'] = speakDef;
+
+      // Play the composed speak animation once.
+      this.playAnimation(part, 'speak', 'once');
+    }
+  }
+
+  /**
    * Play a named animation sequence on a specific avatar part.
    */
   playAnimation(part: PartName, animName: string, loopOverride?: LoopMode): void {
@@ -166,7 +281,7 @@ export class AvatarCompositor {
   /**
    * Trigger high-level CLEO expression preset across layers.
    */
-  setExpression(expression: CleoExpression): void {
+  setExpression(expression: CleoExpression, text?: string): void {
     switch (expression) {
       case 'idle':
         this.resetAll();
@@ -174,9 +289,16 @@ export class AvatarCompositor {
       case 'blink':
         this.playAnimation('eyes', 'blink', 'once');
         break;
-      case 'speak':
-        this.playAnimation('mouth', 'speak', 'infinite');
+      case 'speak': {
+        if (text && text.trim().length > 0) {
+          const composed = this.composeSpeakAnimation(text);
+          this.playSpeakSequence(composed);
+        } else {
+          // Fallback: play static speak animation if no text provided.
+          this.playAnimation('mouth', 'speak', 'once');
+        }
         break;
+      }
       case 'sleep':
         this.playAnimation('eyes', 'sleep', 'infinite');
         this.playAnimation('mouth', 'idle', 'infinite');

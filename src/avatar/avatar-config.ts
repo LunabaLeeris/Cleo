@@ -6,10 +6,6 @@ import SPRITE_EYES_BLINK from '../assets/sprites/eyes/eyes_blink.png';
 import SPRITE_MOUTH_IDLE from '../assets/sprites/mouth/mouth_idle.png';
 import SPRITE_MOUTH_SPEAK from '../assets/sprites/mouth/mouth_speak.png';
 import SPRITE_BROWS_IDLE from '../assets/sprites/brows/brows_idle.png';
-import MOUTH_FRAME_CLOSED from '../assets/frames/mouth/mouth_closed.png';
-import MOUTH_FRAME_HSLIGHT from '../assets/frames/mouth/mouth_hslight.png';
-import MOUTH_FRAME_OMEDIUM from '../assets/frames/mouth/mouth_omedium.png';
-import MOUTH_FRAME_OSUBTLE from '../assets/frames/mouth/mouth_osubtle.png';
 
 // [TO DO] 
 const SPRITE_BROWS_QUESTION = '';
@@ -96,16 +92,11 @@ export const defaultAvatarConfig: AvatarConfig = {
           loop: 'infinite',
         },
         speak: {
+          // Dynamically composed at runtime by composeSpeakAnimation().
+          // This is a placeholder slot; srcArray is injected by playSpeakSequence().
           type: "framearray",
-          srcArray: [
-            MOUTH_FRAME_CLOSED,
-            MOUTH_FRAME_OSUBTLE,
-            MOUTH_FRAME_OMEDIUM,
-            MOUTH_FRAME_HSLIGHT,
-            MOUTH_FRAME_OMEDIUM,
-            MOUTH_FRAME_OSUBTLE,
-          ],
-          loop: 'infinite',
+          srcArray: null,
+          loop: 'once',
         },
         yawn: {
           type: "spritesheet",

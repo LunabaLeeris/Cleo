@@ -32,9 +32,9 @@ import { AvatarCompositor, defaultAvatarConfig, ChleoExpression } from '../src/a
   }, 100);
 
   // Set active expression and update UI label.
-  function setExpression(expr: ChleoExpression, displayTitle?: string): void {
+  function setExpression(expr: ChleoExpression, displayTitle?: string, text?: string): void {
     currentExpression = expr;
-    compositor.setExpression(currentExpression);
+    compositor.setExpression(currentExpression, text);
     activeLabel.innerText = displayTitle || (expr.charAt(0).toUpperCase() + expr.slice(1).replace('_', ' '));
   }
 
@@ -42,7 +42,7 @@ import { AvatarCompositor, defaultAvatarConfig, ChleoExpression } from '../src/a
   function speakText(text: string, enableTTS = true): void {
     bubble.innerText = text;
     bubble.classList.add('visible');
-    setExpression('speak', 'Speaking');
+    setExpression('speak', 'Speaking', text);
 
     if (speechTimer) clearTimeout(speechTimer);
     if (bubbleTimer) clearTimeout(bubbleTimer);

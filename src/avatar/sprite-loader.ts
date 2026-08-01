@@ -81,6 +81,41 @@ export async function preloadAvatarSprites(
 }
 
 /**
+ * Ensure a set of image URLs are loaded into the target map.
+ * Skips images already present in the map. Loads missing ones in parallel.
+ * Used by the compositor to load dynamically composed frame images
+ * that were not part of the initial preload.
+ *
+ * @param srcs - Array of image URLs to ensure are loaded.
+ * @param targetMap - The compositor's live image map to populate.
+ */
+export async function ensureImagesLoaded(
+  srcs: string[],
+  targetMap: Map<string, HTMLImageElement>
+): Promise<void> {
+  const missing = srcs.filter(src => src && !targetMap.has(src));
+  if (missing.length === 0) return;
+
+  const uniqueMissing = [...new Set(missing)];
+  console.log(`[SpriteLoader] Loading ${uniqueMissing.length} new frame image(s) on demand.`);
+
+  const results = await Promise.allSettled(
+    uniqueMissing.map(async (src) => {
+      const img = await loadImage(src);
+      return { src, img };
+    })
+  );
+
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      targetMap.set(result.value.src, result.value.img);
+    } else {
+      console.warn(`[SpriteLoader] Failed to load on-demand image: ${result.reason}`);
+    }
+  }
+}
+
+/**
  * Clear the image cache. Useful for hot-reloading sprites during development.
  */
 export function clearImageCache(): void {
