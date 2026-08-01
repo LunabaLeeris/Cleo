@@ -98,4 +98,7 @@ export interface AvatarConfig {
 
   /** Avatar part configuration map. */
   parts: Record<PartName, PartConfig>;
+
+  /** Overall frame per cycle */
+  masterFrameCount: number;
 }

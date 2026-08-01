@@ -36,7 +36,7 @@ export class AvatarCompositor {
   private config: AvatarConfig;
 
   /** Global master frame counter. */
-  private globalFrame = 0;
+  private globalFrame: number = 0;
 
   /** Per-part runtime animation state. */
   private partStates: Record<PartName, PartAnimationState>;
@@ -48,7 +48,7 @@ export class AvatarCompositor {
   private tickInterval: ReturnType<typeof setInterval> | null = null;
 
   /** Status flag for initialization completion. */
-  private initialized = false;
+  private initialized: boolean = false;
 
   constructor(canvas: HTMLCanvasElement, config: AvatarConfig) {
     this.canvas = canvas;
@@ -58,6 +58,7 @@ export class AvatarCompositor {
     if (!ctx) {
       throw new Error('Failed to obtain 2D context from canvas.');
     }
+
     this.ctx = ctx;
 
     this.applyCanvasDimensions();
@@ -267,6 +268,7 @@ export class AvatarCompositor {
     const globalOffset = this.getGlobalOffset(part);
     const animOffset = animDef.frameOffsets?.[animFrame] ?? { x: 0, y: 0 };
 
+    /* Recalculate position based on offset in config */
     const finalX = base.x + globalOffset.x + animOffset.x;
     const finalY = base.y + globalOffset.y + animOffset.y;
 
