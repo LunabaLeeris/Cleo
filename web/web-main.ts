@@ -115,12 +115,12 @@ injectVercelAnalytics();
     if (enableTTS && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
-      
+
       const girlVoice = getFemaleVoice();
       if (girlVoice) {
         utterance.voice = girlVoice;
       }
-      
+
       utterance.rate = 1.0;
       utterance.pitch = 1.35; // Bright, higher pitch for cute avatar girl voice
       window.speechSynthesis.speak(utterance);

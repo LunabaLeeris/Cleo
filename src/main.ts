@@ -25,6 +25,7 @@ const createWindow = () => {
     alwaysOnTop: true,
     hasShadow: false,
     resizable: false,
+    icon: path.join(app.getAppPath(), 'assets', 'logo.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
