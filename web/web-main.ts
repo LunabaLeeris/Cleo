@@ -1,4 +1,8 @@
+import { inject as injectVercelAnalytics } from '@vercel/analytics';
 import { AvatarCompositor, defaultAvatarConfig, ChleoExpression, WORD_FRAME_MAP } from '../src/avatar';
+
+// Initialize Vercel Analytics to track visits & traffic on Vercel deployment
+injectVercelAnalytics();
 
 // Main initialization procedure for CHLEO Web Interactive Playground.
 (async () => {
