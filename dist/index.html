@@ -1,22 +1,394 @@
 <!doctype html>
-<html>
+<html lang="en">
 
 <head>
   <meta charset="UTF-8" />
-  <title>Cleo</title>
-  <script type="module" crossorigin src="/assets/index-BD2wUoGK.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-DFwrKnko.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>CHLEO — Pixel Art Interactive Playground & Expression Testbed</title>
+  <meta name="description"
+    content="Test CHLEO avatar animations, expressions, reactions, speech timing, and interactive features directly in your browser." />
+
+  <!-- Pixel Art & Retro Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=Press+Start+2P&family=Silkscreen:wght@400;700&family=Outfit:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <script type="module" crossorigin src="/assets/main-DigTl_gb.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/web-style-BFk1o-HU.css">
 </head>
 
-<body>
-  <div class="container">
-    <!-- Pixel Avatar (composable sprite canvas) -->
-    <div id="avatar" class="avatar-container">
-      <!-- Speech Bubble (Anchored directly above CLEO's head) -->
-      <div id="bubble" class="speech-bubble"></div>
-      <canvas id="avatar-canvas"></canvas>
-    </div>
+<body class="theme-light-pixel">
+  <!-- Drawer Backdrop for mobile & slide-out overlay -->
+  <div id="drawer-backdrop" class="drawer-backdrop"></div>
+
+  <div id="app" class="app-layout">
+    <!-- Header -->
+    <header class="app-header panel-bg-header">
+      <div class="brand">
+        <div class="brand-avatar-icon">🎀</div>
+        <h1 class="brand-title">CHLEO <span class="pixel-tag">Playground</span></h1>
+      </div>
+
+      <!-- Main Navigation Tabs -->
+      <nav class="app-nav-tabs">
+        <a href="./index.html" class="nav-tab active">
+          <span class="nav-icon">🎮</span> Playground
+        </a>
+        <a href="./marketplace.html" class="nav-tab disabled-tab">
+          <span class="nav-icon">🛍️</span> Marketplace <span class="nav-badge">Dev</span>
+        </a>
+        <a href="./blog.html" class="nav-tab disabled-tab">
+          <span class="nav-icon">📰</span> Blog & Updates <span class="nav-badge">Dev</span>
+        </a>
+      </nav>
+
+      <div class="header-actions">
+        <span class="status-pill"><span class="pulse-dot"></span> Live v1.0</span>
+        <a href="https://github.com/LunabaLeeris/Chleo" target="_blank" rel="noopener noreferrer" class="contribute-btn"
+          title="Contribute on GitHub">
+          <span class="btn-icon">⭐</span> Contribute
+        </a>
+        <div class="theme-selector">
+          <button id="theme-cream-btn" class="theme-btn active" title="Cozy Cream Pixel Theme">Cream</button>
+          <button id="theme-grid-btn" class="theme-btn" title="Pixel Grid Stage">Grid</button>
+        </div>
+
+        <!-- Toggle Control Drawer Button -->
+        <button id="btn-toggle-drawer" class="drawer-toggle-btn" title="Open Controls Sidebar">
+          <span class="btn-icon">⚙️</span> <span class="btn-text">Controls</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="main-content">
+      <!-- Left Stage: Avatar Preview & Interactive Canvas -->
+      <section class="avatar-stage-container" id="stage-container">
+        <div class="stage-card panel-bg-stage" id="avatar-stage">
+
+          <!-- Pixel Avatar Container (Wrapper holds speech bubble directly above canvas) -->
+          <div id="web-avatar-wrapper" class="avatar-wrapper grab-cursor">
+            <!-- Speech Bubble (Anchored directly above CHLEO's head) -->
+            <div id="web-speech-bubble" class="speech-bubble">
+              Hello! I am CHLEO. Click any action below to test my reactions!
+            </div>
+
+            <canvas id="web-avatar-canvas" id="canvas-element"></canvas>
+          </div>
+
+          <!-- Drag & Interaction Overlay -->
+          <div id="drag-hint" class="drag-hint">
+            <span class="pixel-icon">🖐️</span> Drag CHLEO anywhere on stage
+          </div>
+        </div>
+
+        <div class="stage-info-bar">
+          <div class="info-item">
+            <span class="info-label">Expression:</span>
+            <span id="active-expression-label" class="info-value">Idle</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Master Tick:</span>
+            <span id="master-tick-label" class="info-value">Frame 0</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Panel: Collapsible Control Side-Drawer -->
+      <aside class="controls-panel" id="controls-panel">
+        <!-- Drawer Header -->
+        <div class="drawer-header">
+          <div class="drawer-title-group">
+            <span class="drawer-icon">🎮</span>
+            <h3 class="drawer-title">Controls & Actions</h3>
+          </div>
+          <button id="btn-close-drawer" class="drawer-close-btn" title="Close Panel">✕</button>
+        </div>
+
+        <!-- Section 1: Expressions & Reactions -->
+        <div class="panel-section panel-bg-actions" id="section-expressions">
+          <h2 class="section-title">
+            <span class="title-icon">😊</span>
+            Expressions & Actions
+          </h2>
+          <div class="button-grid">
+            <button id="btn-blink" class="action-btn">
+              <span class="btn-icon">👁️</span> Blink
+            </button>
+            <button id="btn-sleep" class="action-btn">
+              <span class="btn-icon">😴</span> Sleep
+            </button>
+            <button id="btn-close-eyes" class="action-btn">
+              <span class="btn-icon">😑</span> Close Eyes
+            </button>
+            <button id="btn-angry" class="action-btn">
+              <span class="btn-icon">😠</span> Angry
+            </button>
+            <button id="btn-yawn" class="action-btn">
+              <span class="btn-icon">🥱</span> Yawn
+            </button>
+            <button id="btn-question" class="action-btn">
+              <span class="btn-icon">❓</span> Question
+            </button>
+            <button id="btn-reset" class="action-btn btn-accent">
+              <span class="btn-icon">🔄</span> Reset Idle
+            </button>
+          </div>
+        </div>
+
+        <!-- Section 2: Speech & Text Input Simulator -->
+        <div class="panel-section panel-bg-speech">
+          <h2 class="section-title">
+            <span class="title-icon">💬</span>
+            Speech & TTS Simulator
+          </h2>
+          <div class="speech-control-group">
+            <input type="text" id="speech-input" class="text-input" value="Hello! Type anything here and watch me talk!"
+              placeholder="Enter text for CHLEO to speak..." />
+            <div class="speech-actions">
+              <button id="btn-speak-text" class="action-btn btn-primary">
+                <span class="btn-icon">🗣️</span> Speak Text
+              </button>
+              <button id="btn-mapped-words" class="action-btn btn-secondary">
+                <span class="btn-icon">📖</span> Mapped Words
+              </button>
+              <label class="toggle-label">
+                <input type="checkbox" id="toggle-tts" checked />
+                <span>Audio TTS</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2.5: Mapped Words Browser (Hidden by default) -->
+        <div class="panel-section panel-bg-mapped" id="section-mapped-words" style="display: none;">
+          <div class="mapped-words-top">
+            <h2 class="section-title">
+              <span class="title-icon">📖</span>
+              Mapped Words <span id="mapped-words-count" class="badge-count">(0)</span>
+            </h2>
+            <button id="btn-back-mapped" class="action-btn btn-accent btn-back-nav">
+              <span class="btn-icon">⬅️</span> Back
+            </button>
+          </div>
+
+          <div class="search-box-container">
+            <input type="text" id="mapped-search-input" class="text-input search-input" placeholder="🔍 Search mapped words..." />
+          </div>
+
+          <div id="mapped-words-grid" class="mapped-words-grid">
+            <!-- Dynamically populated mapped word chips -->
+          </div>
+        </div>
+
+        <!-- Section 3: Browser Activity Simulator -->
+        <div class="panel-section panel-bg-activity" id="section-activity">
+          <h2 class="section-title">
+            <span class="title-icon">🌐</span>
+            Simulate Browser Events
+          </h2>
+          <div class="activity-grid">
+            <button id="sim-youtube" class="activity-btn" data-url="youtube.com">
+              <span class="activity-badge yt">YT</span> YouTube
+            </button>
+            <button id="sim-github" class="activity-btn" data-url="github.com">
+              <span class="activity-badge gh">GH</span> GitHub
+            </button>
+            <button id="sim-social" class="activity-btn" data-url="facebook.com">
+              <span class="activity-badge fb">FB</span> Social Media
+            </button>
+            <button id="sim-stackoverflow" class="activity-btn" data-url="stackoverflow.com">
+              <span class="activity-badge so">SO</span> StackOverflow
+            </button>
+          </div>
+        </div>
+
+        <!-- Section 4: Engine Tuning & Parameters -->
+        <div class="panel-section panel-bg-tuning">
+          <h2 class="section-title">
+            <span class="title-icon">⚙️</span>
+            Engine Tuning
+          </h2>
+          <div class="slider-group">
+            <div class="slider-header">
+              <label for="speed-slider">Master Cycle Speed</label>
+              <span id="speed-value">1000ms</span>
+            </div>
+            <input type="range" id="speed-slider" min="300" max="2500" step="50" value="1000" />
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <label for="scale-slider">Pixel Render Scale</label>
+              <span id="scale-value">6×</span>
+            </div>
+            <input type="range" id="scale-slider" min="1" max="6" step="1" value="6" />
+          </div>
+        </div>
+
+      </aside>
+    </main>
+
+    <!-- Community Marketplace Section (Grayed out - In Development) -->
+    <section class="marketplace-section panel-section panel-bg-marketplace">
+      <div class="section-header">
+        <h2 class="section-title">
+          <span class="title-icon">🛍️</span>
+          Community Marketplace
+        </h2>
+        <span class="badge-dev-locked">🔒 In Development (Coming Soon)</span>
+      </div>
+
+      <p class="marketplace-intro">
+        The marketplace is how we interact with the community. Creator and community members will be able to share
+        custom content for free or paid download!
+      </p>
+
+      <div class="marketplace-grid disabled-grid">
+        <!-- Item 1: Customizations -->
+        <div class="marketplace-card disabled-card">
+          <div class="card-badge">Customizations</div>
+          <div class="card-icon">🎨</div>
+          <h4 class="card-title">Outfits & UI Themes</h4>
+          <p class="card-desc">Custom visual outfits, pixel sprite skins, color schemes, and UI themes for CHLEO.</p>
+          <button class="marketplace-btn disabled" disabled>Locked</button>
+        </div>
+
+        <!-- Item 2: Foods -->
+        <div class="marketplace-card disabled-card">
+          <div class="card-badge">Foods</div>
+          <div class="card-icon">🍱</div>
+          <h4 class="card-title">Snacks & Treats</h4>
+          <p class="card-desc">Treat Chleo with interactive digital snacks, meals, and favorite drinks to boost her
+            mood.
+          </p>
+          <button class="marketplace-btn disabled" disabled>Locked</button>
+        </div>
+
+        <!-- Item 3: MODS -->
+        <div class="marketplace-card disabled-card">
+          <div class="card-badge">MODS</div>
+          <div class="card-icon">🧩</div>
+          <h4 class="card-title">Community Mods</h4>
+          <p class="card-desc">Experimental features and community modifications that alter CHLEO's core behaviors.</p>
+          <button class="marketplace-btn disabled" disabled>Locked</button>
+        </div>
+
+        <!-- Item 4: LLMs & Brains -->
+        <div class="marketplace-card disabled-card">
+          <div class="card-badge">AI Brains</div>
+          <div class="card-icon">🧠</div>
+          <h4 class="card-title">LLMs & Prompts</h4>
+          <p class="card-desc">Swap Chleo's AI brain models, custom system prompts, and personality fine-tunes.</p>
+          <button class="marketplace-btn disabled" disabled>Locked</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Project Overview & Contact Section -->
+    <section class="discussions-section panel-section panel-bg-discussions">
+      <div class="discussions-header">
+        <h2 class="section-title">
+          <span class="title-icon">📌</span>
+          Project Overview & Developer Contact
+        </h2>
+        <span class="badge-status">Active Project</span>
+      </div>
+
+      <div class="readme-content-card">
+        <div class="readme-banner">
+          <h3 class="readme-title">Chleo 🎀</h3>
+          <p class="readme-subtitle">
+            An interactive desktop and browser companion designed to keep you on track. She monitors your digital
+            activity, playfully guides you toward better habits, and adds life to your workspace.
+          </p>
+        </div>
+
+        <div class="features-grid">
+          <div class="feature-card">
+            <h4>🛡️ Productivity & Focus</h4>
+            <ul>
+              <li><strong>Website Monitoring:</strong> Tracks time spent on distracting sites and offers productive
+                alternatives.</li>
+              <li><strong>Puzzle-Gated Blocking:</strong> Block specific websites. Solve a puzzle to unlock them.</li>
+              <li><strong>"Close Her Eyes" Break Time:</strong> Temporary guilt-free browsing after completing hard
+                puzzles.</li>
+              <li><strong>Productivity Rewards:</strong> Praises and rewards you for focusing on work.</li>
+            </ul>
+          </div>
+
+          <div class="feature-card">
+            <h4>✨ Interactions & Personality</h4>
+            <ul>
+              <li><strong>Dynamic Emotions:</strong> Chleo reacts to behavior. She gets happy, angry, or grumpy `:|`.
+              </li>
+              <li><strong>Companion Commentary:</strong> Chimes in with comments about what you're working on.</li>
+              <li><strong>Attention Nudges:</strong> Throws something at your cursor if ignored too long!</li>
+              <li><strong>Casual Play:</strong> Play mini-games and interact during breaks.</li>
+            </ul>
+          </div>
+
+          <div class="feature-card">
+            <h4>🎨 Composable Pixel Engine</h4>
+            <ul>
+              <li><strong>Layered Compositor:</strong> Independent body, eyes, mouth, and eyebrow layers.</li>
+              <li><strong>Custom Animations:</strong> Frame-accurate sprite sheet playback and keyframe sync.</li>
+              <li><strong>Web & Desktop Ready:</strong> Runs in Electron desktop app and web browsers.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="inspiration-box">
+          <span class="quote-icon">💡</span>
+          <p>
+            <em>"The concept and assets for Chleo are inspired by my girlfriend (and yes, she looks just as beautiful,
+              if
+              not more)."</em>
+          </p>
+        </div>
+      </div>
+
+      <!-- Contact Me Section -->
+      <div class="contact-section">
+        <h3 class="contact-title">📬 Contact Me</h3>
+        <div class="social-grid">
+          <a href="https://www.facebook.com/qwersdfzxc" target="_blank" rel="noopener noreferrer"
+            class="social-card fb">
+            <span class="social-icon">👤</span>
+            <div class="social-info">
+              <span class="social-name">Facebook</span>
+              <span class="social-handle">Christian Lee Lunaba</span>
+            </div>
+          </a>
+
+          <a href="https://www.linkedin.com/in/christianlee-lunaba-72229025b/" target="_blank" rel="noopener noreferrer"
+            class="social-card li">
+            <span class="social-icon">💼</span>
+            <div class="social-info">
+              <span class="social-name">LinkedIn</span>
+              <span class="social-handle">Christian Lee Lunaba</span>
+            </div>
+          </a>
+
+          <a href="https://github.com/LunabaLeeris" target="_blank" rel="noopener noreferrer" class="social-card gh">
+            <span class="social-icon">🐙</span>
+            <div class="social-info">
+              <span class="social-name">GitHub</span>
+              <span class="social-handle">@LunabaLeeris</span>
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>CHLEO • By Christian Lee (the bf &lt;3)</p>
+    </footer>
   </div>
+
 </body>
 
 </html>

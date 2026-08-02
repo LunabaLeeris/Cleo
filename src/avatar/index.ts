@@ -7,6 +7,8 @@ export {
   WORD_GAP_FRAMES,
   PUNCTUATION_PAUSE_FRAMES,
   MOUTH_FRAMES,
+  BROW_FRAMES,
+  EYE_FRAMES,
   tokenizeText,
   getWordFrames,
   getPauseFrameCount,

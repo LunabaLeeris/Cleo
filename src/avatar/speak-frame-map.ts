@@ -39,6 +39,27 @@ import MOUTH_AAA from '../assets/frames/mouth/mouth_aaa.png';
 import MOUTH_OO from '../assets/frames/mouth/mouth_oo.png';
 import MOUTH_A from '../assets/frames/mouth/mouth_a.png';
 
+// ---------------------------------------------------------------------------
+// Eyebrow frame imports
+// ---------------------------------------------------------------------------
+import BROWS_IDLE from '../assets/frames/brows/brows_idle.png';
+import BROWS_LU from '../assets/frames/brows/brows_lu.png';
+import BROWS_RU from '../assets/frames/brows/brows_ru.png';
+import BROWS_BU from '../assets/frames/brows/brows_bu.png';
+import BROWS_TG from '../assets/frames/brows/brows_tg.png';
+
+// ---------------------------------------------------------------------------
+// Eye frame imports
+// ---------------------------------------------------------------------------
+import EYES_IDLE from '../assets/frames/eyes/eyes_idle.png';
+import EYES_CLOSED from '../assets/frames/eyes/eyes_closed.png';
+import EYES_BHC from '../assets/frames/eyes/eyes_bhc.png';
+import EYES_LHC from '../assets/frames/eyes/eyes_lhc.png';
+import EYES_RHC from '../assets/frames/eyes/eyes_rhc.png';
+import EYES_FIRE from '../assets/frames/eyes/eyes_fire.png';
+import EYES_GOLDEN from '../assets/frames/eyes/eyes_golden.png';
+import EYES_WIDE from '../assets/frames/eyes/eyes_wide.png';
+
 // --- Re-export frame assets for external use ---
 // "closed" is kept as an alias for neutral to maintain backward compatibility
 // with avatar-compositor.ts (MOUTH_FRAMES.closed).
@@ -65,6 +86,25 @@ export const MOUTH_FRAMES = {
   aaa: MOUTH_AAA,
   oo: MOUTH_OO,
   a: MOUTH_A
+} as const;
+
+export const BROW_FRAMES = {
+  idle: BROWS_IDLE,
+  lu: BROWS_LU,
+  ru: BROWS_RU,
+  bu: BROWS_BU,
+  tg: BROWS_TG,
+} as const;
+
+export const EYE_FRAMES = {
+  idle: EYES_IDLE,
+  closed: EYES_CLOSED,
+  bhc: EYES_BHC,
+  lhc: EYES_LHC,
+  rhc: EYES_RHC,
+  fire: EYES_FIRE,
+  golden: EYES_GOLDEN,
+  wide: EYES_WIDE,
 } as const;
 
 /**
@@ -134,26 +174,36 @@ export const WORD_FRAME_MAP: Record<string, WordFrames> = {
   'hello': {
     // EH-lOH
     mouth: [MOUTH_EH, MOUTH_O],
+    eyebrows: [BROWS_BU, BROWS_BU],
+    eyes: [EYES_GOLDEN, EYES_GOLDEN],
   },
   'hi': {
     // AY
     mouth: [MOUTH_AA],
+    eyebrows: [BROWS_BU],
+    eyes: [EYES_GOLDEN],
   },
   'hey': {
     // EY 
     mouth: [MOUTH_EY],
+    eyebrows: [BROWS_LU],
+    eyes: [EYES_LHC],
   },
   'bye': {
     // b-AY → pbm, aa, i
     mouth: [MOUTH_PBM, MOUTH_EE],
+    eyebrows: [BROWS_BU, BROWS_BU],
   },
   'welcome': {
     // w-EH-l-k-AH-m → u(w), el, k, aa, pbm(m)
     mouth: [MOUTH_U, MOUTH_EH, MOUTH_TDKGN, MOUTH_AA, MOUTH_PBM],
+    eyebrows: [BROWS_BU, BROWS_BU, BROWS_BU, BROWS_BU, BROWS_BU],
+    eyes: [EYES_GOLDEN, EYES_GOLDEN, EYES_GOLDEN, EYES_GOLDEN, EYES_GOLDEN],
   },
   'goodbye': {
     // UH-d-b-AY → u, tdkgn(d)-pbm(b), ey
     mouth: [MOUTH_U, MOUTH_PBM, MOUTH_EY],
+    eyebrows: [BROWS_BU, BROWS_BU, BROWS_BU],
   },
 
   // ── Pronouns & determiners ─────────────────────────────────────────────
@@ -271,6 +321,10 @@ export const WORD_FRAME_MAP: Record<string, WordFrames> = {
     // D-UW → u
     mouth: [MOUTH_U],
   },
+  'doing': {
+    // D-UW-ING → u - ee
+    mouth: [MOUTH_U, MOUTH_EE],
+  },
   'does': {
     // D-AH-Z → aa, ss
     mouth: [MOUTH_AA, MOUTH_SS],
@@ -362,94 +416,134 @@ export const WORD_FRAME_MAP: Record<string, WordFrames> = {
   'yes': {
     // Y-EH-S → eh, ss
     mouth: [MOUTH_EH, MOUTH_SS],
+    eyebrows: [BROWS_BU, BROWS_BU],
+    eyes: [EYES_GOLDEN, EYES_GOLDEN],
   },
   'no': {
     // N-OW → o
     mouth: [MOUTH_O],
+    eyebrows: [BROWS_TG],
+    eyes: [EYES_BHC],
   },
   'not': {
     // N-AA-T → aa, tdkgn
     mouth: [MOUTH_AA, MOUTH_TDKGN],
+    eyebrows: [BROWS_TG, BROWS_TG],
+    eyes: [EYES_BHC, EYES_BHC],
   },
   'ok': {
     // OW-K-EY → o, ey
     mouth: [MOUTH_O, MOUTH_EY],
+    eyebrows: [BROWS_BU, BROWS_BU],
   },
   'okay': {
     // OW-K-EY → o, tdkgn, ey
     mouth: [MOUTH_O, MOUTH_TDKGN, MOUTH_EY],
+    eyebrows: [BROWS_BU, BROWS_BU, BROWS_BU],
   },
   'sure': {
     // SH-UH-R →  u, r
     mouth: [MOUTH_U, MOUTH_R],
+    eyebrows: [BROWS_LU, BROWS_LU],
+    eyes: [EYES_LHC, EYES_LHC],
   },
 
   // ── Question / reaction words ──────────────────────────────────────────
   'what': {
     // W-AH-T → aa, tdkgn
     mouth: [MOUTH_OO, MOUTH_TDKGN],
+    eyebrows: [BROWS_BU, BROWS_BU],
+    eyes: [EYES_WIDE, EYES_WIDE],
   },
   'why': {
-    // W-AY → aa, ey
+    // W-AY → aa, ey 
     mouth: [MOUTH_U, MOUTH_EY],
+    eyebrows: [BROWS_RU, BROWS_RU],
+    eyes: [EYES_RHC, EYES_RHC],
   },
   'how': {
     // H-AW → aa, u
     mouth: [MOUTH_AA, MOUTH_U],
+    eyebrows: [BROWS_LU, BROWS_LU],
+    eyes: [EYES_LHC, EYES_LHC],
   },
   'when': {
     // W-EH-N → eh, tdkgn
     mouth: [MOUTH_U, MOUTH_TDKGN],
+    eyebrows: [BROWS_LU, BROWS_LU],
+    eyes: [EYES_LHC, EYES_LHC],
   },
   'where': {
     // W-EH-R → eh, r
     mouth: [MOUTH_U, MOUTH_R],
+    eyebrows: [BROWS_RU, BROWS_RU],
+    eyes: [EYES_RHC, EYES_RHC],
   },
   'who': {
     // H-UW → u
     mouth: [MOUTH_OO],
+    eyebrows: [BROWS_RU],
+    eyes: [EYES_RHC],
   },
   'which': {
     // W-IH-CH → i, ch
     mouth: [MOUTH_U, MOUTH_CH],
+    eyebrows: [BROWS_LU, BROWS_LU],
+    eyes: [EYES_LHC, EYES_LHC],
   },
   'huh': {
     // H-AH → aa
     mouth: [MOUTH_AA],
+    eyebrows: [BROWS_RU],
+    eyes: [EYES_RHC],
   },
   'hmm': {
     // M (sustained hum) → pbm held
     mouth: [MOUTH_PBM, MOUTH_PBM],
+    eyebrows: [BROWS_TG, BROWS_TG],
+    eyes: [EYES_BHC, EYES_BHC],
   },
   'oh': {
     // OW → o
     mouth: [MOUTH_O, MOUTH_O],
+    eyebrows: [BROWS_BU, BROWS_BU],
+    eyes: [EYES_WIDE, EYES_WIDE],
   },
   'wow': {
     // W-AW → aa, u
     mouth: [MOUTH_OO, MOUTH_AAA],
+    eyebrows: [BROWS_BU, BROWS_BU],
+    eyes: [EYES_WIDE, EYES_WIDE],
   },
   'please': {
     // P-L-IY-Z → pbm, ee, ss
     mouth: [MOUTH_PBM, MOUTH_EE, MOUTH_SS],
+    eyebrows: [BROWS_BU, BROWS_BU, BROWS_BU],
+    eyes: [EYES_CLOSED, EYES_CLOSED, EYES_CLOSED],
   },
   'thanks': {
     // TH-AE-NG-K-S → th, aa, ss
     mouth: [MOUTH_A, MOUTH_SS, MOUTH_SS],
+    eyebrows: [BROWS_BU, BROWS_BU, BROWS_BU],
   },
   'thank': {
     // TH-AE-NG-K → th, aa, tdkgn
     mouth: [MOUTH_A],
+    eyebrows: [BROWS_BU],
   },
   'sorry': {
     // S-AA-R-IY → ss, aa, r, ee
     mouth: [MOUTH_U, MOUTH_R, MOUTH_EE],
+    eyebrows: [BROWS_TG, BROWS_TG, BROWS_TG],
+    eyes: [EYES_BHC, EYES_BHC, EYES_BHC],
   },
 
   // ── Action words ───────────────────────────────────────────────────────
   'think': {
     // TH-IH-NG-K → th, i, tdkgn
     mouth: [MOUTH_TH, MOUTH_TDKGN],
+    eyebrows: [BROWS_TG, BROWS_TG],
+    eyes: [EYES_BHC, EYES_BHC],
   },
   'know': {
     // N-OW → o
@@ -458,10 +552,12 @@ export const WORD_FRAME_MAP: Record<string, WordFrames> = {
   'see': {
     // S-IY → ss, ee
     mouth: [MOUTH_SS, MOUTH_EE],
+    eyes: [EYES_WIDE, EYES_WIDE],
   },
   'look': {
     // L-UH-K → u, tdkgn
     mouth: [MOUTH_OO],
+    eyes: [EYES_WIDE],
   },
   'go': {
     // G-OW → o
@@ -474,6 +570,8 @@ export const WORD_FRAME_MAP: Record<string, WordFrames> = {
   'stop': {
     // S-T-AA-P → ss, aa, pbm
     mouth: [MOUTH_SS, MOUTH_AA, MOUTH_PBM],
+    eyebrows: [BROWS_TG, BROWS_TG, BROWS_TG],
+    eyes: [EYES_FIRE, EYES_FIRE, EYES_FIRE],
   },
   'start': {
     // S-T-AA-R-T → ss, aa, r
@@ -518,6 +616,8 @@ export const WORD_FRAME_MAP: Record<string, WordFrames> = {
   'help': {
     // HH-EH-L-P → eh, pbm
     mouth: [MOUTH_EH, MOUTH_PBM],
+    eyebrows: [BROWS_BU, BROWS_BU],
+    eyes: [EYES_WIDE, EYES_WIDE],
   },
   'try': {
     // T-R-AY → r, ey
@@ -534,6 +634,8 @@ export const WORD_FRAME_MAP: Record<string, WordFrames> = {
   'love': {
     // L-AH-V → aa, fv
     mouth: [MOUTH_AA, MOUTH_FV],
+    eyebrows: [BROWS_BU, BROWS_BU],
+    eyes: [EYES_GOLDEN, EYES_GOLDEN],
   },
   'run': {
     // R-AH-N → r, aa
@@ -548,14 +650,20 @@ export const WORD_FRAME_MAP: Record<string, WordFrames> = {
   "don't": {
     // D-OW-N-T → o, tdkgn
     mouth: [MOUTH_O, MOUTH_TDKGN],
+    eyebrows: [BROWS_TG, BROWS_TG],
+    eyes: [EYES_FIRE, EYES_FIRE],
   },
   "can't": {
     // K-AE-N-T → aa, tdkgn
     mouth: [MOUTH_AA, MOUTH_TDKGN],
+    eyebrows: [BROWS_TG, BROWS_TG],
+    eyes: [EYES_BHC, EYES_BHC],
   },
   "won't": {
     // W-OW-N-T → o, tdkgn
     mouth: [MOUTH_O, MOUTH_TDKGN],
+    eyebrows: [BROWS_TG, BROWS_TG],
+    eyes: [EYES_FIRE, EYES_FIRE],
   },
   "i'm": {
     // AY-M → ey, pbm
@@ -576,6 +684,8 @@ export const WORD_FRAME_MAP: Record<string, WordFrames> = {
   "didn't": {
     // D-IH-D-N-T → i, tdkgn
     mouth: [MOUTH_I, MOUTH_TDKGN],
+    eyebrows: [BROWS_TG, BROWS_TG],
+    eyes: [EYES_BHC, EYES_BHC],
   },
   "you're": {
     // Y-UH-R → u, r
@@ -590,18 +700,25 @@ export const WORD_FRAME_MAP: Record<string, WordFrames> = {
   'good': {
     // G-UH-D → u, tdkgn
     mouth: [MOUTH_U, MOUTH_TDKGN],
+    eyebrows: [BROWS_BU, BROWS_BU],
+    eyes: [EYES_GOLDEN, EYES_GOLDEN],
   },
   'great': {
     // G-R-EY-T → r, ey, tdkgn
     mouth: [MOUTH_R, MOUTH_EY, MOUTH_TDKGN],
+    eyebrows: [BROWS_BU, BROWS_BU, BROWS_BU],
+    eyes: [EYES_GOLDEN, EYES_GOLDEN, EYES_GOLDEN],
   },
   'bad': {
     // B-AE-D → pbm, aa
     mouth: [MOUTH_PBM, MOUTH_AA],
+    eyebrows: [BROWS_TG, BROWS_TG],
+    eyes: [EYES_FIRE, EYES_FIRE],
   },
   'big': {
     // B-IH-G → pbm, i
     mouth: [MOUTH_PBM, MOUTH_I],
+    eyes: [EYES_WIDE, EYES_WIDE],
   },
   'small': {
     // S-M-AO-L → ss, pbm, aa
@@ -618,18 +735,26 @@ export const WORD_FRAME_MAP: Record<string, WordFrames> = {
   'right': {
     // R-AY-T → r, ey
     mouth: [MOUTH_R, MOUTH_EY],
+    eyebrows: [BROWS_BU, BROWS_BU],
+    eyes: [EYES_GOLDEN, EYES_GOLDEN],
   },
   'wrong': {
     // R-AO-NG → r, o
     mouth: [MOUTH_R, MOUTH_O],
+    eyebrows: [BROWS_TG, BROWS_TG],
+    eyes: [EYES_FIRE, EYES_FIRE],
   },
   'happy': {
     // H-AE-P-IY → aa, pbm, ee
     mouth: [MOUTH_AA, MOUTH_PBM, MOUTH_EE],
+    eyebrows: [BROWS_BU, BROWS_BU, BROWS_BU],
+    eyes: [EYES_GOLDEN, EYES_GOLDEN, EYES_GOLDEN],
   },
   'sad': {
     // S-AE-D → ss, aa
     mouth: [MOUTH_SS, MOUTH_AA],
+    eyebrows: [BROWS_TG, BROWS_TG],
+    eyes: [EYES_BHC, EYES_BHC],
   },
   'fast': {
     // F-AE-S-T → fv, aa, ss
@@ -638,6 +763,7 @@ export const WORD_FRAME_MAP: Record<string, WordFrames> = {
   'slow': {
     // S-L-OW → ss, o
     mouth: [MOUTH_SS, MOUTH_O],
+    eyes: [EYES_BHC, EYES_BHC],
   },
   'very': {
     // V-EH-R-IY → fv, eh, r, ee
@@ -668,6 +794,7 @@ export const WORD_FRAME_MAP: Record<string, WordFrames> = {
   'world': {
     // W-ER-L-D → eh, r, tdkgn
     mouth: [MOUTH_EH, MOUTH_R, MOUTH_TDKGN],
+    eyes: [EYES_GOLDEN, EYES_GOLDEN, EYES_GOLDEN],
   },
   'people': {
     // P-IY-P-AH-L → pbm, ee, pbm, aa
@@ -768,18 +895,26 @@ export const WORD_FRAME_MAP: Record<string, WordFrames> = {
   'never': {
     // N-EH-V-ER → eh, fv, r
     mouth: [MOUTH_EH, MOUTH_FV, MOUTH_R],
+    eyebrows: [BROWS_TG, BROWS_TG, BROWS_TG],
+    eyes: [EYES_FIRE, EYES_FIRE, EYES_FIRE],
   },
   'always': {
     // AO-L-W-EY-Z → aa, ey, ss
     mouth: [MOUTH_AA, MOUTH_EY, MOUTH_SS],
+    eyebrows: [BROWS_BU, BROWS_BU, BROWS_BU],
+    eyes: [EYES_GOLDEN, EYES_GOLDEN, EYES_GOLDEN],
   },
   'really': {
     // R-IY-L-IY → r, ee, tdkgn, ee
     mouth: [MOUTH_R, MOUTH_EE, MOUTH_TDKGN, MOUTH_EE],
+    eyebrows: [BROWS_RU, BROWS_RU, BROWS_RU, BROWS_RU],
+    eyes: [EYES_RHC, EYES_RHC, EYES_RHC, EYES_RHC],
   },
   'maybe': {
     // M-EY-B-IY → pbm, ey, pbm, ee
     mouth: [MOUTH_PBM, MOUTH_EY, MOUTH_PBM, MOUTH_EE],
+    eyebrows: [BROWS_LU, BROWS_LU, BROWS_LU, BROWS_LU],
+    eyes: [EYES_LHC, EYES_LHC, EYES_LHC, EYES_LHC],
   },
   'something': {
     // S-AH-M-TH-IH-NG → ss, aa, pbm, th, i
