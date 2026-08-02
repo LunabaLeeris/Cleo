@@ -1,4 +1,4 @@
-import { AvatarCompositor, defaultAvatarConfig, ChleoExpression } from '../src/avatar';
+import { AvatarCompositor, defaultAvatarConfig, ChleoExpression, WORD_FRAME_MAP } from '../src/avatar';
 
 // Main initialization procedure for CHLEO Web Interactive Playground.
 (async () => {
@@ -38,6 +38,60 @@ import { AvatarCompositor, defaultAvatarConfig, ChleoExpression } from '../src/a
     activeLabel.innerText = displayTitle || (expr.charAt(0).toUpperCase() + expr.slice(1).replace('_', ' '));
   }
 
+  // Helper to select a female / girl voice from browser synthesis voices.
+  let cachedFemaleVoice: SpeechSynthesisVoice | null = null;
+
+  function getFemaleVoice(): SpeechSynthesisVoice | null {
+    if (cachedFemaleVoice) return cachedFemaleVoice;
+    if (!('speechSynthesis' in window)) return null;
+
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length === 0) return null;
+
+    // Common female voice identifiers across Windows, macOS, Android, iOS, Chrome, Edge
+    const femaleIdentifiers = [
+      'zira', 'jenny', 'samantha', 'victoria', 'karen', 'fiona', 'moira',
+      'ava', 'aria', 'sara', 'michelle', 'catherine', 'hazel', 'susan',
+      'google us english', 'female', 'girl'
+    ];
+
+    // 1. Try finding an English female voice
+    const englishFemale = voices.find(v => {
+      const nameLower = v.name.toLowerCase();
+      const langLower = v.lang.toLowerCase();
+      return langLower.startsWith('en') && femaleIdentifiers.some(id => nameLower.includes(id));
+    });
+
+    if (englishFemale) {
+      cachedFemaleVoice = englishFemale;
+      return cachedFemaleVoice;
+    }
+
+    // 2. Fallback to any voice with female keyword
+    const anyFemale = voices.find(v => femaleIdentifiers.some(id => v.name.toLowerCase().includes(id)));
+    if (anyFemale) {
+      cachedFemaleVoice = anyFemale;
+      return cachedFemaleVoice;
+    }
+
+    // 3. Fallback to any English voice
+    const anyEnglish = voices.find(v => v.lang.toLowerCase().startsWith('en'));
+    if (anyEnglish) {
+      cachedFemaleVoice = anyEnglish;
+      return cachedFemaleVoice;
+    }
+
+    return voices[0] || null;
+  }
+
+  // Pre-warm voices cache on load
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      cachedFemaleVoice = null;
+      getFemaleVoice();
+    };
+  }
+
   // Display speech bubble text and trigger mouth speaking animation.
   function speakText(text: string, enableTTS = true): void {
     bubble.innerText = text;
@@ -57,8 +111,14 @@ import { AvatarCompositor, defaultAvatarConfig, ChleoExpression } from '../src/a
     if (enableTTS && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
+      
+      const girlVoice = getFemaleVoice();
+      if (girlVoice) {
+        utterance.voice = girlVoice;
+      }
+      
       utterance.rate = 1.0;
-      utterance.pitch = 1.2;
+      utterance.pitch = 1.35; // Bright, higher pitch for cute avatar girl voice
       window.speechSynthesis.speak(utterance);
     }
 
@@ -130,6 +190,67 @@ import { AvatarCompositor, defaultAvatarConfig, ChleoExpression } from '../src/a
         speakText(text, ttsCheckbox?.checked ?? false);
       }
     }
+  });
+
+  // Event Listeners & Logic: Mapped Words View
+  const btnMappedWords = document.getElementById('btn-mapped-words');
+  const btnBackMapped = document.getElementById('btn-back-mapped');
+  const sectionExpressions = document.getElementById('section-expressions');
+  const sectionActivity = document.getElementById('section-activity');
+  const sectionMappedWords = document.getElementById('section-mapped-words');
+  const mappedSearchInput = document.getElementById('mapped-search-input') as HTMLInputElement;
+  const mappedWordsGrid = document.getElementById('mapped-words-grid');
+  const mappedWordsCount = document.getElementById('mapped-words-count');
+
+  const allMappedWords = Object.keys(WORD_FRAME_MAP).sort();
+
+  function renderMappedWords(filter = ''): void {
+    if (!mappedWordsGrid || !mappedWordsCount) return;
+
+    const query = filter.trim().toLowerCase();
+    const filtered = query
+      ? allMappedWords.filter(w => w.toLowerCase().includes(query))
+      : allMappedWords;
+
+    mappedWordsCount.innerText = `(${filtered.length})`;
+    mappedWordsGrid.innerHTML = '';
+
+    if (filtered.length === 0) {
+      const noResults = document.createElement('div');
+      noResults.className = 'no-words-msg';
+      noResults.innerText = `No mapped words found matching "${filter}"`;
+      mappedWordsGrid.appendChild(noResults);
+      return;
+    }
+
+    filtered.forEach(word => {
+      const chip = document.createElement('button');
+      chip.className = 'mapped-word-chip';
+      chip.innerText = word;
+      chip.title = `Test mouth animation for "${word}"`;
+      chip.addEventListener('click', () => {
+        if (speechInput) speechInput.value = word;
+        speakText(word, ttsCheckbox?.checked ?? false);
+      });
+      mappedWordsGrid.appendChild(chip);
+    });
+  }
+
+  btnMappedWords?.addEventListener('click', () => {
+    if (sectionExpressions) sectionExpressions.style.display = 'none';
+    if (sectionActivity) sectionActivity.style.display = 'none';
+    if (sectionMappedWords) sectionMappedWords.style.display = 'flex';
+    renderMappedWords(mappedSearchInput?.value ?? '');
+  });
+
+  btnBackMapped?.addEventListener('click', () => {
+    if (sectionMappedWords) sectionMappedWords.style.display = 'none';
+    if (sectionExpressions) sectionExpressions.style.display = 'flex';
+    if (sectionActivity) sectionActivity.style.display = 'flex';
+  });
+
+  mappedSearchInput?.addEventListener('input', () => {
+    renderMappedWords(mappedSearchInput.value);
   });
 
   // Event Listeners: Activity Reactions

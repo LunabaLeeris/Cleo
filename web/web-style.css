@@ -613,7 +613,114 @@ body.theme-pixel-grid #avatar-stage {
 .action-btn:active { transform: translate(2px, 2px); box-shadow: var(--btn-shadow-active); }
 
 .btn-primary { background-color: #e0f2fe; }
+.btn-secondary { background-color: #fef08a; }
 .btn-accent { background-color: #fce7f3; }
+
+/* Mapped Words Browser Panel */
+.panel-bg-mapped {
+  background-image: var(--actions-bg-img);
+}
+
+.mapped-words-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.badge-count {
+  color: var(--accent-primary);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.btn-back-nav {
+  flex-direction: row !important;
+  padding: 0.35rem 0.65rem !important;
+  font-size: 0.8rem !important;
+  gap: 0.3rem !important;
+}
+
+.search-box-container {
+  width: 100%;
+}
+
+.search-input {
+  background: #fffdf5;
+}
+
+.search-input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(244, 114, 182, 0.25), inset 2px 2px 0px rgba(0, 0, 0, 0.06);
+}
+
+.mapped-words-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 0.2rem 0.35rem 0.5rem 0.1rem;
+}
+
+/* Custom Pixel Scrollbar for Mapped Words List */
+.mapped-words-grid::-webkit-scrollbar {
+  width: 6px;
+}
+.mapped-words-grid::-webkit-scrollbar-track {
+  background: var(--bg-card-secondary);
+  border-radius: 4px;
+}
+.mapped-words-grid::-webkit-scrollbar-thumb {
+  background: var(--border-pixel);
+  border-radius: 4px;
+}
+
+.mapped-word-chip {
+  background-color: var(--btn-bg);
+  border: 2px solid var(--btn-border);
+  box-shadow: 2px 2px 0px var(--btn-border);
+  color: var(--text-dark);
+  padding: 0.45rem 0.4rem;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-pixel);
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.15s ease;
+}
+
+.mapped-word-chip:hover {
+  background-color: #ffffff;
+  color: var(--accent-primary);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0px var(--btn-border);
+}
+
+.mapped-word-chip:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px var(--btn-border);
+}
+
+.no-words-msg {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 1.5rem 1rem;
+  font-family: var(--font-pixel);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: var(--bg-card-secondary);
+  border: 2px dashed var(--border-pixel);
+  border-radius: 6px;
+}
 
 .speech-control-group { display: flex; flex-direction: column; gap: 0.65rem; }
 
