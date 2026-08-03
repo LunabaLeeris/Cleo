@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { inject as injectVercelAnalytics } from '@vercel/analytics';
 import {
   AvatarCompositor,
@@ -338,6 +339,15 @@ injectVercelAnalytics();
   const btnSaveVoiceConfig = document.getElementById('btn-save-voice-config');
   const btnResetVoiceConfig = document.getElementById('btn-reset-voice-config');
   const voiceStatus = document.getElementById('voice-config-status');
+
+  // In production mode (e.g. Vercel deployment), hide the Save button (only allow Test & Reset)
+  if (import.meta.env.PROD && btnSaveVoiceConfig) {
+    const btnGrid = btnSaveVoiceConfig.parentElement;
+    btnSaveVoiceConfig.remove();
+    if (btnGrid) {
+      btnGrid.style.gridTemplateColumns = '1fr 1fr';
+    }
+  }
 
   function showVoiceStatus(msg: string): void {
     if (!voiceStatus) return;
