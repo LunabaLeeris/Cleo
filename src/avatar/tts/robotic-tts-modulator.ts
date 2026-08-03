@@ -51,7 +51,7 @@ export interface RoboticModulationConfig {
 /** Default modulation parameters for audible robotic female vocal voice. */
 export const DEFAULT_MODULATION_CONFIG: RoboticModulationConfig = {
   speechPitch: 1.75,
-  speechRate: 3.7,
+  speechRate: 2.7,
   f0: 280,
   f1: 630,
   f2: 2225,
