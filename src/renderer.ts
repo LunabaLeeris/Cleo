@@ -84,17 +84,18 @@ window.addEventListener('mouseup', () => {
 
 // State helpers
 /**
- * Play speaking animation: mouth loops speak, optional eyebrow raise.
+ * Start speaking animation with text-aware composition.
+ * Uses the full prosody + timing pipeline.
  */
-function startSpeaking(): void {
-  compositor.playAnimation('mouth', 'speak');
+function startSpeaking(text: string): void {
+  compositor.setExpression('speak', text);
 }
 
 /**
  * Return to idle: reset all parts to their defaults.
  */
 function stopSpeaking(): void {
-  compositor.resetPart('mouth');
+  compositor.resetAll();
 }
 
 // Click to blink
@@ -124,18 +125,26 @@ let bubbleTimeout: NodeJS.Timeout;
 function showSpeechBubble(text: string) {
   bubble.innerText = text;
   bubble.classList.add('visible');
-  startSpeaking();
 
   clearTimeout(speakingTimeout);
   clearTimeout(bubbleTimeout);
 
-  // Get the number of words (handles extra spaces and empty strings)
-  const words = text.trim().split(/\s+/);
-  const wordCount = words[0] === "" ? 0 : words.length;
+  // Compose the animation first to calculate tick-based duration.
+  const result = compositor.composeSpeakAnimation(text);
+  compositor.playSpeakSequence(result);
 
-  const speakingDuration = Math.max(1000, wordCount * 500);
+  // Calculate the duration from the composed hold ticks.
+  // Use the mouth track (longest track) as the source of truth.
+  const mouthHolds = result.holdTicks.mouth;
+  const totalTicks = mouthHolds
+    ? mouthHolds.reduce((sum, h) => sum + h, 0)
+    : text.trim().split(/\s+/).length * 3; // Fallback: ~3 ticks per word
 
-  // The bubble stays visible for an extra 1.5 seconds after speaking stops
+  // Convert ticks to milliseconds using the compositor's tick rate.
+  const tickMs = (defaultAvatarConfig.cycleDurationMs ?? 1000) / defaultAvatarConfig.masterFrameCount;
+  const speakingDuration = Math.max(1000, totalTicks * tickMs);
+
+  // The bubble stays visible for an extra 1.5 seconds after speech ends.
   const bubbleDuration = speakingDuration + 1500;
 
   speakingTimeout = setTimeout(() => {
@@ -148,4 +157,4 @@ function showSpeechBubble(text: string) {
 }
 
 // [TO DO] TTS
-// [TO DO] Activities
+// [TO DO] Activities

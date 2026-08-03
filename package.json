@@ -43,6 +43,7 @@
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
+    "cmu-pronouncing-dictionary": "^3.0.0",
     "electron-squirrel-startup": "^1.0.1",
     "lottie-web": "^5.13.0",
     "ws": "^8.21.1"

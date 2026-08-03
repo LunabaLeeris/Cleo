@@ -15,8 +15,11 @@ import {
   getPauseFrameCount,
   WORD_GAP_FRAMES,
   MOUTH_FRAMES,
+  EYE_FRAMES,
   type WordFrames,
 } from './speak-frame-map';
+import { computeHoldTicks } from './speech-timing';
+import { analyzeProsody, applySpeedFactor, applyEmphasis } from './prosody-engine';
 
 /**
  * Runtime animation state for a single avatar part.
@@ -33,6 +36,10 @@ interface PartAnimationState {
 
   /** Active loop behavior mode. */
   loopMode: LoopMode;
+
+  /** Hold-tick counter for frame-array animations. Tracks how many
+   *  ticks the current frame has been displayed. */
+  holdCounter: number;
 }
 
 /**
@@ -59,6 +66,21 @@ export class AvatarCompositor {
   /** Status flag for initialization completion. */
   private initialized: boolean = false;
 
+  /**
+   * Tick counter for auto-blink injection during speech.
+   * Resets when a speak animation starts. When it reaches the
+   * blink interval, a blink is triggered and the counter resets.
+   */
+  private blinkTickCounter: number = 0;
+
+  /**
+   * Blink interval range in ticks. A random value between min and
+   * max is chosen after each blink to vary the rhythm.
+   */
+  private readonly BLINK_MIN_TICKS = 18;
+  private readonly BLINK_MAX_TICKS = 35;
+  private nextBlinkAt: number = 25;
+
   constructor(canvas: HTMLCanvasElement, config: AvatarConfig) {
     this.canvas = canvas;
     this.config = config;
@@ -82,6 +104,7 @@ export class AvatarCompositor {
         localFrame: 0,
         completedCycles: 0,
         loopMode: animDef?.loop ?? 'infinite',
+        holdCounter: 0,
       };
     }
   }
@@ -148,92 +171,226 @@ export class AvatarCompositor {
   }
 
   /**
-   * Compose per-part frame arrays from input text.
+   * Compose per-part frame arrays and hold-tick timings from input text.
    *
    * Pipeline:
-   *  1. Tokenize text into words + trailing punctuation.
-   *  2. Look up each word in the frame map (fallback to default).
-   *  3. Concatenate frames per part, inserting word-gap frames between words.
-   *  4. After punctuation marks (. ! ? , etc.), duplicate the last frame
-   *     N times to simulate a natural pause/hold.
+   *  1. Tokenize text into words and trailing punctuation.
+   *  2. Analyze phrase-level prosody (speed, pauses, emphasis).
+   *  3. Look up each word in the frame map (fall back to default).
+   *  4. Compute hold-tick timing per word (syllable-weighted, CMU-based).
+   *  5. Apply prosody speed factors and emphasis to hold ticks.
+   *  6. Concatenate frames per part with coarticulation-aware gaps.
+   *  7. Cascade eye/brow expressions across words without explicit entries.
+   *  8. Inject blink frames during long utterances.
+   *  9. After punctuation, duplicate the last frame to simulate a pause.
    *
-   * @returns A map of part names to their composed srcArray sequences.
-   *          Only parts that have frames are included.
+   * @returns A composition result with frame arrays and hold ticks per part.
    */
-  composeSpeakAnimation(text: string): Partial<Record<PartName, string[]>> {
+  composeSpeakAnimation(text: string): ComposedSpeakResult {
     const tokens = tokenizeText(text);
     if (tokens.length === 0) {
       console.warn('[AvatarCompositor] composeSpeakAnimation called with empty text.');
-      return {};
+      return { frames: {}, holdTicks: {} };
     }
 
     console.log(`[AvatarCompositor] Composing speak animation for ${tokens.length} token(s):`,
       tokens.map(t => `"${t.word}"${t.trailingPunctuation}`).join(' '));
 
-    // Accumulate frames per part across all tokens.
+    // --- Prosody analysis ---
+    const prosody = analyzeProsody(tokens);
+
+    // Accumulate frames and hold ticks per part across all tokens.
     const composed: Partial<Record<PartName, string[]>> = {};
+    const composedHolds: Partial<Record<PartName, number[]>> = {};
+
+    // Track the last eye/brow expression for cascading.
+    let lastEyeFrames: string[] | null = null;
+    let lastBrowFrames: string[] | null = null;
+
+    // Track the previous word's last mouth frame for coarticulation.
+    let prevLastMouthFrame: string | null = null;
+
+    // Track total mouth frames for blink injection.
+    let totalMouthFrames = 0;
+    let lastBlinkInjection = 0;
+    const BLINK_INJECT_INTERVAL = 25; // Inject blink every ~25 mouth frames
 
     for (let i = 0; i < tokens.length; i++) {
       const token = tokens[i];
       const wordFrames: WordFrames = getWordFrames(token.word);
+      const mouthFrames = wordFrames.mouth ?? [];
 
-      // Append each part's word frames.
-      for (const [part, frames] of Object.entries(wordFrames) as [PartName, string[]][]) {
-        if (!frames || frames.length === 0) continue;
-        if (!composed[part]) composed[part] = [];
-        composed[part]!.push(...frames);
+      // --- Compute hold ticks for this word ---
+      let wordHolds = computeHoldTicks(token.word, mouthFrames);
 
-        // Apply punctuation pause: duplicate the last frame N times.
-        const pauseCount = getPauseFrameCount(token.trailingPunctuation);
-        if (pauseCount > 0) {
-          const lastFrame = frames[frames.length - 1];
-          for (let p = 0; p < pauseCount; p++) {
-            composed[part]!.push(lastFrame);
+      // Apply prosody speed factor.
+      wordHolds = applySpeedFactor([...wordHolds], prosody.speedFactors[i]);
+
+      // Apply prosody emphasis.
+      wordHolds = applyEmphasis(wordHolds, prosody.emphasisLevels[i]);
+
+      // --- Expression cascading ---
+      // If this word has explicit eye/brow frames, use and remember them.
+      // If not, cascade the previous word's expression.
+      const eyeFrames = wordFrames.eyes ?? lastEyeFrames;
+      const browFrames = wordFrames.eyebrows ?? lastBrowFrames;
+
+      if (wordFrames.eyes) lastEyeFrames = wordFrames.eyes;
+      if (wordFrames.eyebrows) lastBrowFrames = wordFrames.eyebrows;
+
+      // --- Coarticulation-aware gap insertion ---
+      if (i > 0 && mouthFrames.length > 0) {
+        const gapTicks = prosody.interWordPauses[i - 1];
+        const nextFirstFrame = mouthFrames[0];
+
+        // Skip the neutral gap when adjacent mouth shapes are compatible.
+        const shouldElideGap = prevLastMouthFrame !== null && (
+          // Same viseme on both sides — hold it.
+          prevLastMouthFrame === nextFirstFrame ||
+          // Both are vowel-class visemes — blend directly.
+          (isVowelViseme(prevLastMouthFrame) && isVowelViseme(nextFirstFrame))
+        );
+
+        if (!shouldElideGap && gapTicks > 0) {
+          // Insert neutral gap frame(s).
+          if (!composed.mouth) composed.mouth = [];
+          if (!composedHolds.mouth) composedHolds.mouth = [];
+          for (let g = 0; g < gapTicks; g++) {
+            composed.mouth.push(MOUTH_FRAMES.neutral);
+            composedHolds.mouth.push(1);
+            totalMouthFrames++;
           }
         }
       }
 
-      // Insert word-gap frames between words (not after the last word).
-      if (i < tokens.length - 1) {
-        for (const [part, gapFrames] of Object.entries(WORD_GAP_FRAMES) as [PartName, string[]][]) {
-          if (!gapFrames || gapFrames.length === 0) continue;
-          if (!composed[part]) composed[part] = [];
-          composed[part]!.push(...gapFrames);
+      // --- Append mouth frames and hold ticks ---
+      if (mouthFrames.length > 0) {
+        if (!composed.mouth) composed.mouth = [];
+        if (!composedHolds.mouth) composedHolds.mouth = [];
+        composed.mouth.push(...mouthFrames);
+        composedHolds.mouth.push(...wordHolds);
+        totalMouthFrames += mouthFrames.length;
+        prevLastMouthFrame = mouthFrames[mouthFrames.length - 1];
+      }
+
+      // --- Append eye frames (cascaded or explicit) ---
+      if (eyeFrames && eyeFrames.length > 0 && mouthFrames.length > 0) {
+        if (!composed.eyes) composed.eyes = [];
+        if (!composedHolds.eyes) composedHolds.eyes = [];
+
+        // Stretch or trim eye frames to match mouth frame count.
+        const alignedEyes = alignFramesToLength(eyeFrames, mouthFrames.length);
+        composed.eyes.push(...alignedEyes);
+        composedHolds.eyes.push(...wordHolds);
+
+        // Also fill gaps for eyes (hold previous frame during mouth gaps).
+        if (i > 0) {
+          const gapTicks = prosody.interWordPauses[i - 1];
+          if (gapTicks > 0 && !isVowelViseme(prevLastMouthFrame ?? '')) {
+            // Backfill gap frames for eyes at the gap position.
+            const lastEyeFrame = alignedEyes[0];
+            for (let g = 0; g < gapTicks; g++) {
+              // Insert before the current word's eye frames.
+              const insertAt = composed.eyes.length - alignedEyes.length;
+              composed.eyes.splice(insertAt, 0, lastEyeFrame);
+              composedHolds.eyes.splice(insertAt, 0, 1);
+            }
+          }
         }
+      }
+
+      // --- Append brow frames (cascaded or explicit) ---
+      if (browFrames && browFrames.length > 0 && mouthFrames.length > 0) {
+        if (!composed.eyebrows) composed.eyebrows = [];
+        if (!composedHolds.eyebrows) composedHolds.eyebrows = [];
+
+        const alignedBrows = alignFramesToLength(browFrames, mouthFrames.length);
+        composed.eyebrows.push(...alignedBrows);
+        composedHolds.eyebrows.push(...wordHolds);
+
+        // Fill gaps for brows.
+        if (i > 0) {
+          const gapTicks = prosody.interWordPauses[i - 1];
+          if (gapTicks > 0 && !isVowelViseme(prevLastMouthFrame ?? '')) {
+            const lastBrowFrame = alignedBrows[0];
+            const insertAt = composed.eyebrows.length - alignedBrows.length;
+            for (let g = 0; g < gapTicks; g++) {
+              composed.eyebrows.splice(insertAt, 0, lastBrowFrame);
+              composedHolds.eyebrows.splice(insertAt, 0, 1);
+            }
+          }
+        }
+      }
+
+      // --- Punctuation pause: duplicate the last frame N times ---
+      const pauseCount = getPauseFrameCount(token.trailingPunctuation);
+      if (pauseCount > 0) {
+        for (const part of ['mouth', 'eyes', 'eyebrows'] as PartName[]) {
+          const frameArr = composed[part];
+          const holdArr = composedHolds[part];
+          if (frameArr && frameArr.length > 0 && holdArr) {
+            const lastFrame = frameArr[frameArr.length - 1];
+            for (let p = 0; p < pauseCount; p++) {
+              frameArr.push(lastFrame);
+              holdArr.push(1);
+            }
+          }
+        }
+        totalMouthFrames += pauseCount;
+      }
+
+      // --- Blink injection during long utterances ---
+      if (totalMouthFrames - lastBlinkInjection >= BLINK_INJECT_INTERVAL) {
+        if (composed.eyes) {
+          // Inject a closed-eye frame to simulate a blink.
+          composed.eyes.push(EYE_FRAMES.closed);
+          composedHolds.eyes!.push(2); // Hold blink for 2 ticks
+          composed.eyes.push(EYE_FRAMES.idle);
+          composedHolds.eyes!.push(1);
+        }
+        lastBlinkInjection = totalMouthFrames;
       }
     }
 
-    // End with a closed mouth to return to neutral before idle revert.
+    // End with neutral mouth to return to idle.
     if (composed.mouth && composed.mouth.length > 0) {
       composed.mouth.push(MOUTH_FRAMES.closed);
+      composedHolds.mouth!.push(1);
     }
 
     // Log composed frame counts per part.
     for (const [part, frames] of Object.entries(composed)) {
-      console.log(`[AvatarCompositor]   ${part}: ${frames.length} frames composed`);
+      const holds = composedHolds[part as PartName];
+      const totalTicks = holds ? holds.reduce((s, h) => s + h, 0) : frames.length;
+      console.log(`[AvatarCompositor]   ${part}: ${frames.length} frames, ${totalTicks} total ticks`);
     }
 
-    return composed;
+    return { frames: composed, holdTicks: composedHolds };
   }
 
   /**
-   * Inject composed frame arrays as transient 'speak' animation defs
-   * into the runtime config and play them once per affected part.
+   * Inject composed frame arrays and hold ticks as transient 'speak'
+   * animation definitions into the runtime config. Play them once per
+   * affected part.
    *
-   * Parts not present in the composed map are left untouched
-   * (they keep their current animation).
-   *
+   * Parts not in the composed map keep their current animation.
    * New images not in the preload cache are loaded on demand.
    */
-  async playSpeakSequence(composed: Partial<Record<PartName, string[]>>): Promise<void> {
+  async playSpeakSequence(result: ComposedSpeakResult): Promise<void> {
+    const { frames: composed, holdTicks: composedHolds } = result;
+
     // Collect all unique image URLs that need loading.
     const allSrcs: string[] = [];
     for (const frames of Object.values(composed)) {
       if (frames) allSrcs.push(...frames);
     }
 
-    // Load any images not yet cached.
+    // Load any images not in the cache.
     await ensureImagesLoaded(allSrcs, this.images);
+
+    // Reset blink counter at start of speech.
+    this.blinkTickCounter = 0;
+    this.nextBlinkAt = this.randomBlinkInterval();
 
     // Inject transient FrameArrayDef for each affected part and play.
     for (const [part, srcArray] of Object.entries(composed) as [PartName, string[]][]) {
@@ -242,6 +399,7 @@ export class AvatarCompositor {
       const speakDef: FrameArrayDef = {
         type: 'framearray',
         srcArray,
+        holdTicks: composedHolds[part] ?? undefined,
         loop: 'once',
       };
 
@@ -268,6 +426,7 @@ export class AvatarCompositor {
     state.currentAnim = animName;
     state.localFrame = 0;
     state.completedCycles = 0;
+    state.holdCounter = 0;
     state.loopMode = loopOverride ?? animDef.loop ?? 'infinite';
 
     console.log(`[AvatarCompositor] Part "${part}" playing animation "${animName}" (loopMode: ${state.loopMode})`);
@@ -291,8 +450,8 @@ export class AvatarCompositor {
         break;
       case 'speak': {
         if (text && text.trim().length > 0) {
-          const composed = this.composeSpeakAnimation(text);
-          this.playSpeakSequence(composed);
+          const result = this.composeSpeakAnimation(text);
+          this.playSpeakSequence(result);
         } else {
           // Fallback: play static speak animation if no text provided.
           this.playAnimation('mouth', 'speak', 'once');
@@ -466,12 +625,26 @@ export class AvatarCompositor {
   private advanceFrames(): void {
     this.globalFrame = (this.globalFrame + 1) % this.config.masterFrameCount;
 
+    // Increment blink counter during active speak animations.
+    const mouthState = this.partStates.mouth;
+    if (mouthState.currentAnim === 'speak') {
+      this.blinkTickCounter++;
+      if (this.blinkTickCounter >= this.nextBlinkAt) {
+        // Only blink if eyes are not already in a speak animation.
+        const eyeState = this.partStates.eyes;
+        if (eyeState.currentAnim !== 'speak') {
+          this.playAnimation('eyes', 'blink', 'once');
+        }
+        this.blinkTickCounter = 0;
+        this.nextBlinkAt = this.randomBlinkInterval();
+      }
+    }
+
     for (const part of PART_RENDER_ORDER) {
       const state = this.partStates[part];
       const animDef = this.config.parts[part].animations[state.currentAnim];
       if (!animDef) continue;
 
-      state.localFrame++;
       const frameCount = animDef.type === 'spritesheet'
         ? animDef.frameCount
         : (animDef.srcArray?.length ?? 0);
@@ -479,6 +652,24 @@ export class AvatarCompositor {
       if (frameCount <= 1) {
         state.localFrame = 0;
         continue;
+      }
+
+      // --- Hold-tick logic for frame-array animations ---
+      if (animDef.type === 'framearray' && animDef.holdTicks && animDef.holdTicks.length > 0) {
+        state.holdCounter++;
+        const holdNeeded = animDef.holdTicks[state.localFrame] ?? 1;
+
+        if (state.holdCounter < holdNeeded) {
+          // Still holding this frame — do not advance.
+          continue;
+        }
+
+        // Hold complete — reset counter and advance.
+        state.holdCounter = 0;
+        state.localFrame++;
+      } else {
+        // Default: advance 1 frame per tick (spritesheet or no holdTicks).
+        state.localFrame++;
       }
 
       if (state.localFrame >= frameCount) {
@@ -505,4 +696,74 @@ export class AvatarCompositor {
 
     return false;
   }
+
+  /**
+   * Generate a random blink interval between min and max tick values.
+   */
+  private randomBlinkInterval(): number {
+    return this.BLINK_MIN_TICKS +
+      Math.floor(Math.random() * (this.BLINK_MAX_TICKS - this.BLINK_MIN_TICKS));
+  }
+}
+
+/**
+ * Result of composeSpeakAnimation(). Contains frame arrays and
+ * hold-tick arrays per part.
+ */
+export interface ComposedSpeakResult {
+  /** Per-part frame source arrays. */
+  frames: Partial<Record<PartName, string[]>>;
+
+  /** Per-part hold-tick arrays (index-aligned with frames). */
+  holdTicks: Partial<Record<PartName, number[]>>;
+}
+
+/**
+ * Set of vowel-class mouth viseme image sources.
+ * Built from the actual imported constants so it works with any
+ * URL format (Vite hashed paths, data URIs, relative paths, etc.).
+ */
+const VOWEL_VISEME_SRCS = new Set([
+  MOUTH_FRAMES.aa,
+  MOUTH_FRAMES.aaa,
+  MOUTH_FRAMES.a,
+  MOUTH_FRAMES.eh,
+  MOUTH_FRAMES.ee,
+  MOUTH_FRAMES.ey,
+  MOUTH_FRAMES.i,
+  MOUTH_FRAMES.o,
+  MOUTH_FRAMES.oo,
+  MOUTH_FRAMES.u,
+]);
+
+/**
+ * Test whether a frame source corresponds to a vowel viseme.
+ *
+ * @param frameSrc - Image source path for a mouth frame.
+ * @returns True if the viseme is a vowel (open-mouth) shape.
+ */
+function isVowelViseme(frameSrc: string): boolean {
+  return VOWEL_VISEME_SRCS.has(frameSrc);
+}
+
+/**
+ * Stretch or trim a frame array to match a target length.
+ * When the source is shorter, the last frame is repeated.
+ * When the source is longer, it is truncated.
+ *
+ * @param frames       - Source frame array.
+ * @param targetLength - Desired output length.
+ * @returns New array of exactly targetLength elements.
+ */
+function alignFramesToLength(frames: string[], targetLength: number): string[] {
+  if (frames.length === targetLength) return [...frames];
+  if (frames.length > targetLength) return frames.slice(0, targetLength);
+
+  // Stretch: repeat last frame to fill.
+  const result = [...frames];
+  const lastFrame = frames[frames.length - 1];
+  while (result.length < targetLength) {
+    result.push(lastFrame);
+  }
+  return result;
 }

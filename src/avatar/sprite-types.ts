@@ -54,6 +54,13 @@ export interface SpriteSheetDef extends BaseAnimationDef {
 export interface FrameArrayDef extends BaseAnimationDef {
   type: 'framearray';
   srcArray: string[] | null;
+
+  /**
+   * Per-frame hold durations in ticks. Each value sets how many
+   * render ticks the compositor shows that frame before it advances.
+   * Index-aligned with srcArray. If not set, each frame holds for 1 tick.
+   */
+  holdTicks?: number[];
 }
 
 export type AnimationDef = SpriteSheetDef | FrameArrayDef;
