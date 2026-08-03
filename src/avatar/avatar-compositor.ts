@@ -65,12 +65,17 @@ export class AvatarCompositor {
   /** Status flag for initialization completion. */
   private initialized: boolean = false;
 
-  /**
-   * Tick counter for auto-blink injection during speech.
-   * Resets when a speak animation starts. When it reaches the
-   * blink interval, a blink is triggered and the counter resets.
-   */
+  /** Tick counter for auto-blink injection during speech. */
   private blinkTickCounter: number = 0;
+
+  /** Next randomized blink interval target in master ticks. */
+  private nextBlinkAt: number = 30;
+
+  /** Active word start frame anchors for synchronized word playback. */
+  private activeWordAnchors: WordStartAnchor[] = [];
+
+  /** Callback triggered when mouth animation reaches a word start frame. */
+  private onWordStartCallback: ((wordIndex: number, word: string) => void) | null = null;
 
   /**
    * Blink interval range in ticks. A random value between min and
@@ -78,7 +83,6 @@ export class AvatarCompositor {
    */
   private readonly BLINK_MIN_TICKS = 18;
   private readonly BLINK_MAX_TICKS = 35;
-  private nextBlinkAt: number = 25;
 
   constructor(canvas: HTMLCanvasElement, config: AvatarConfig) {
     this.canvas = canvas;
@@ -391,6 +395,9 @@ export class AvatarCompositor {
     this.blinkTickCounter = 0;
     this.nextBlinkAt = this.randomBlinkInterval();
 
+    // Store active word start anchors if provided.
+    this.activeWordAnchors = result.wordAnchors ? [...result.wordAnchors] : [];
+
     // Inject transient FrameArrayDef for each affected part and play.
     for (const [part, srcArray] of Object.entries(composed) as [PartName, string[]][]) {
       if (!srcArray || srcArray.length === 0) continue;
@@ -408,6 +415,15 @@ export class AvatarCompositor {
       // Play the composed speak animation once.
       this.playAnimation(part, 'speak', 'once');
     }
+  }
+
+  /**
+   * Registers a callback fired when the mouth animation reaches a word start frame.
+   *
+   * @param cb - Callback receiving wordIndex and word string.
+   */
+  setOnWordStartCallback(cb: ((wordIndex: number, word: string) => void) | null): void {
+    this.onWordStartCallback = cb;
   }
 
   /**
@@ -653,6 +669,14 @@ export class AvatarCompositor {
         continue;
       }
 
+      // --- Trigger word start callback when mouth animation reaches word frame ---
+      if (part === 'mouth' && state.currentAnim === 'speak' && state.holdCounter === 0) {
+        const anchor = this.activeWordAnchors.find(a => a.frameIndex === state.localFrame);
+        if (anchor && this.onWordStartCallback) {
+          this.onWordStartCallback(anchor.wordIndex, anchor.word);
+        }
+      }
+
       // --- Hold-tick logic for frame-array animations ---
       if (animDef.type === 'framearray' && animDef.holdTicks && animDef.holdTicks.length > 0) {
         state.holdCounter++;
@@ -705,9 +729,24 @@ export class AvatarCompositor {
   }
 }
 
+/** Word boundary frame anchor for synchronized word playback. */
+export interface WordStartAnchor {
+  /** Index of word in phrase token sequence. */
+  wordIndex: number;
+
+  /** Clean word text string. */
+  word: string;
+
+  /** Local frame index where word animation starts. */
+  frameIndex: number;
+
+  /** Spoken word duration in milliseconds. */
+  durationMs?: number;
+}
+
 /**
- * Result of composeSpeakAnimation(). Contains frame arrays and
- * hold-tick arrays per part.
+ * Result of composeSpeakAnimation(). Contains frame arrays,
+ * hold-tick arrays per part, and word boundary anchors.
  */
 export interface ComposedSpeakResult {
   /** Per-part frame source arrays. */
@@ -715,6 +754,9 @@ export interface ComposedSpeakResult {
 
   /** Per-part hold-tick arrays (index-aligned with frames). */
   holdTicks: Partial<Record<PartName, number[]>>;
+
+  /** Word boundary frame anchors for sync. */
+  wordAnchors?: WordStartAnchor[];
 }
 
 /**

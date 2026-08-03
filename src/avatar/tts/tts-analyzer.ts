@@ -1,8 +1,8 @@
 /**
- * TTS Timing Analyzer
+ * TTS Timing Analyzer & Word-Word Enunciation Mapper
  *
- * Extracts spoken word durations and inter-word gaps from SpeechSynthesis TTS output.
- * Measures exact word duration (wordDurationMs) using token boundaries.
+ * Extracts spoken word durations and inter-word gaps for input phrases.
+ * Calculates exact word duration (wordDurationMs) and pauses based on speech rate.
  * All comments follow ASD-STE100 rules (imperative and simple present tense).
  */
 
@@ -35,12 +35,12 @@ export interface TTSPhraseAnalysis {
 
 /**
  * TTS Analyzer class.
- * Calculates spoken word durations and timing measurements for input text.
+ * Maps input phrase text to word durations and pause measurements.
  */
 export class TTSAnalyzer {
   /**
-   * Analyzes speech timing for an input phrase text.
-   * Calculates word durations based on active speech rate configuration.
+   * Mapped speech timing for an input phrase text.
+   * Calculates word durations based on character length, phoneme counts, and active speech rate.
    *
    * @param text - Full input text phrase string.
    * @returns Promise resolving to TTSPhraseAnalysis object.
@@ -52,11 +52,8 @@ export class TTSAnalyzer {
     }
 
     const config = defaultTTSModulator.getConfig();
+    const baseMsPerWord = Math.max(80, Math.round(160 / Math.max(0.4, config.speechRate)));
     const wordTimings: TTSWordTiming[] = [];
-
-    // Base milliseconds per word derived from TTS speechRate configuration
-    // Rate 1.0 = ~240ms per standard word, Rate 1.2 = ~200ms per word
-    const baseMsPerWord = Math.max(100, Math.round(240 / config.speechRate));
 
     let totalDurationMs = 0;
 
@@ -66,18 +63,17 @@ export class TTSAnalyzer {
 
       // Word duration scales proportionally with character length
       const wordDurationMs = Math.max(
-        120,
-        Math.round(baseMsPerWord * (0.6 + Math.min(1.2, length * 0.12)))
+        90,
+        Math.round(baseMsPerWord * (0.60 + Math.min(1.2, length * 0.09)))
       );
 
-      // Inter-word pause duration derived from trailing punctuation
-      let pauseMs = 40;
+      let pauseMs = 0; // 0ms pause for seamless word-to-word animation flow
       if (token.trailingPunctuation) {
-        if (token.trailingPunctuation === '...') pauseMs = 450;
-        else if (token.trailingPunctuation === '.') pauseMs = 280;
-        else if (token.trailingPunctuation === '?') pauseMs = 320;
-        else if (token.trailingPunctuation === '!') pauseMs = 280;
-        else if (token.trailingPunctuation === ',') pauseMs = 160;
+        if (token.trailingPunctuation === '...') pauseMs = 280;
+        else if (token.trailingPunctuation === '.') pauseMs = 160;
+        else if (token.trailingPunctuation === '?') pauseMs = 180;
+        else if (token.trailingPunctuation === '!') pauseMs = 160;
+        else if (token.trailingPunctuation === ',') pauseMs = 90;
       }
 
       wordTimings.push({
@@ -89,7 +85,7 @@ export class TTSAnalyzer {
       totalDurationMs += wordDurationMs + pauseMs;
     }
 
-    console.log(`[TTSAnalyzer] Analyzed phrase "${text}": ${totalDurationMs}ms total duration.`);
+    console.log(`[TTSAnalyzer] Mapped phrase "${text}": ${totalDurationMs}ms total duration (${wordTimings.length} words).`);
 
     return {
       text,

@@ -2,11 +2,12 @@
  * Speech Orchestrator Engine
  *
  * Pre-computes TTS-driven animation hold ticks and pre-renders speech packets.
- * Plays vocal TTS speech and mouth viseme animations in 100% lockstep.
+ * Synchronizes Wall-E robotic word enunciations with mouth viseme animation playback.
+ * Animation frame advancement triggers vocal word playback in exact lockstep.
  * All comments follow ASD-STE100 rules (imperative and simple present tense).
  */
 
-import { ComposedSpeakResult, AvatarCompositor } from '../avatar-compositor';
+import { ComposedSpeakResult, AvatarCompositor, WordStartAnchor } from '../avatar-compositor';
 import { getWordFrames, MOUTH_FRAMES } from '../speak-frame-map';
 import { defaultTTSAnalyzer, TTSPhraseAnalysis } from './tts-analyzer';
 import { defaultTTSModulator } from './robotic-tts-modulator';
@@ -16,8 +17,11 @@ export interface PreRenderedSpeechPacket {
   /** Full input text phrase string. */
   text: string;
 
-  /** TTS-driven animation composition result. */
+  /** TTS-driven animation composition result with word anchors. */
   animationResult: ComposedSpeakResult;
+
+  /** Word start frame anchors with measured durations. */
+  wordAnchors: WordStartAnchor[];
 
   /** Total animation duration in milliseconds. */
   totalDurationMs: number;
@@ -38,17 +42,29 @@ export class SpeechOrchestrator {
   async preRenderSpeech(text: string, tickMs: number): Promise<PreRenderedSpeechPacket> {
     console.log('[SpeechOrchestrator] Pre-rendering speech packet for:', `"${text}"`);
 
+    // Pre-warm Web Audio and TTS subsystem
+    defaultTTSModulator.preWarm();
+
     const analysis: TTSPhraseAnalysis = await defaultTTSAnalyzer.analyzePhrase(text);
 
     const composedMouthFrames: string[] = [];
     const composedHoldTicks: number[] = [];
+    const wordAnchors: WordStartAnchor[] = [];
 
     for (let i = 0; i < analysis.wordTimings.length; i++) {
       const item = analysis.wordTimings[i];
       const wordFrames = getWordFrames(item.word);
       const mouthFrames = wordFrames.mouth ?? [MOUTH_FRAMES.neutral];
-
       const frameCount = mouthFrames.length;
+
+      // Mark the starting frame index for word i
+      const startFrameIndex = composedMouthFrames.length;
+      wordAnchors.push({
+        wordIndex: i,
+        word: item.word,
+        frameIndex: startFrameIndex,
+        durationMs: item.durationMs,
+      });
 
       // Derive viseme hold ticks directly from measured TTS word duration
       const totalWordTicks = Math.max(1, Math.round(item.durationMs / tickMs));
@@ -60,8 +76,8 @@ export class SpeechOrchestrator {
         composedHoldTicks.push(ticksPerFrame);
       }
 
-      // Append inter-word pause gap frames
-      if (item.pauseMs > 0 && i < analysis.wordTimings.length - 1) {
+      // Append inter-word pause gap frames ONLY when punctuation pause exists (> 80ms)
+      if (item.pauseMs > 80 && i < analysis.wordTimings.length - 1) {
         const gapTicks = Math.max(1, Math.round(item.pauseMs / tickMs));
         composedMouthFrames.push(MOUTH_FRAMES.neutral);
         composedHoldTicks.push(gapTicks);
@@ -78,31 +94,44 @@ export class SpeechOrchestrator {
     const animationResult: ComposedSpeakResult = {
       frames: { mouth: composedMouthFrames },
       holdTicks: { mouth: composedHoldTicks },
+      wordAnchors,
     };
 
     console.log(
-      `[SpeechOrchestrator] Speech packet ready: ${totalTicks} ticks, ${totalDurationMs}ms total duration.`
+      `[SpeechOrchestrator] Speech packet ready: ${totalTicks} ticks, ${totalDurationMs}ms total duration (${wordAnchors.length} word anchors).`
     );
 
     return {
       text,
       animationResult,
+      wordAnchors,
       totalDurationMs,
     };
   }
 
   /**
-   * Triggers mouth animation and robotic vocal TTS speech in exact lockstep.
+   * Triggers mouth animation and plays modulated robotic word voice when word animation starts.
    *
    * @param packet     - Pre-rendered speech packet from preRenderSpeech().
    * @param compositor - Active AvatarCompositor instance.
    */
   playPreRenderedSpeech(packet: PreRenderedSpeechPacket, compositor: AvatarCompositor): void {
-    // 1. Play mouth viseme animation sequence
-    compositor.playSpeakSequence(packet.animationResult, packet.text);
+    // 1. Cancel any active speech output
+    defaultTTSModulator.stopSpeech();
 
-    // 2. Play vocal TTS speech with robotic pitch modulation
-    defaultTTSModulator.speakVocalPhrase(packet.text);
+    // 2. Pre-warm AudioContext and TTS synthesis
+    defaultTTSModulator.preWarm();
+
+    // 3. Set word boundary callback: fires when animation advances to a word start frame
+    compositor.setOnWordStartCallback((wordIndex, word) => {
+      const anchor = packet.wordAnchors.find(a => a.wordIndex === wordIndex);
+      const durMs = anchor?.durationMs ?? 250;
+      console.log(`[SpeechOrchestrator] Sync trigger: playing word "${word}" (index ${wordIndex}, ${durMs}ms)`);
+      defaultTTSModulator.speakWord(word, durMs);
+    });
+
+    // 4. Play mouth viseme animation sequence (animation playback drives word audio)
+    compositor.playSpeakSequence(packet.animationResult);
   }
 }
 

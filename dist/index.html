@@ -16,7 +16,7 @@
     rel="stylesheet">
 
   <link rel="icon" type="image/png" href="/logo.png" />
-  <script type="module" crossorigin src="/assets/main-DGNqiLyZ.js"></script>
+  <script type="module" crossorigin src="/assets/main-DmlAGnXl.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/web-style-BZFqTa4W.css">
 </head>
 
@@ -228,6 +228,107 @@
             </div>
             <input type="range" id="scale-slider" min="1" max="6" step="1" value="6" />
           </div>
+        </div>
+
+        <!-- Section 5: Voice Modulation Controls -->
+        <div class="panel-section panel-bg-tuning" id="section-voice-modulation">
+          <h2 class="section-title">
+            <span class="title-icon">🎙️</span>
+            Robotic Voice Modulation
+          </h2>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <label for="pitch-slider">Speech Pitch</label>
+              <span id="pitch-value">1.7</span>
+            </div>
+            <input type="range" id="pitch-slider" min="0.5" max="3.0" step="0.05" value="1.7" />
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <label for="rate-slider">Speech Rate</label>
+              <span id="rate-value">1.5</span>
+            </div>
+            <input type="range" id="rate-slider" min="0.2" max="3.5" step="0.05" value="1.5" />
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <label for="volume-slider">Master Volume</label>
+              <span id="volume-value">0.65</span>
+            </div>
+            <input type="range" id="volume-slider" min="0.0" max="1.5" step="0.05" value="0.65" />
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <label for="blend-slider">Wall-E Synth Blend</label>
+              <span id="blend-value">0.25</span>
+            </div>
+            <input type="range" id="blend-slider" min="0.0" max="1.0" step="0.05" value="0.25" />
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <label for="f0-slider">Fundamental Pitch (F0)</label>
+              <span id="f0-value">310Hz</span>
+            </div>
+            <input type="range" id="f0-slider" min="100" max="800" step="10" value="310" />
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <label for="f1-slider">Formant F1 Frequency</label>
+              <span id="f1-value">680Hz</span>
+            </div>
+            <input type="range" id="f1-slider" min="200" max="2500" step="10" value="680" />
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <label for="f2-slider">Formant F2 Frequency</label>
+              <span id="f2-value">2150Hz</span>
+            </div>
+            <input type="range" id="f2-slider" min="800" max="5000" step="25" value="2150" />
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <label for="vibrato-rate-slider">Vibrato Speed</label>
+              <span id="vibrato-rate-value">5.0Hz</span>
+            </div>
+            <input type="range" id="vibrato-rate-slider" min="0.0" max="20.0" step="0.5" value="5.0" />
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <label for="vibrato-depth-slider">Vibrato Depth</label>
+              <span id="vibrato-depth-value">0.15</span>
+            </div>
+            <input type="range" id="vibrato-depth-slider" min="0.0" max="1.0" step="0.05" value="0.15" />
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <label for="distortion-slider">Overdrive Crunch</label>
+              <span id="distortion-value">0.20</span>
+            </div>
+            <input type="range" id="distortion-slider" min="0.0" max="1.0" step="0.05" value="0.20" />
+          </div>
+
+          <div class="button-grid" style="margin-top: 12px; grid-template-columns: 1fr 1fr 1fr;">
+            <button id="btn-test-voice" class="action-btn btn-primary" title="Test active voice settings">
+              <span class="btn-icon">🔊</span> Test
+            </button>
+            <button id="btn-save-voice-config" class="action-btn btn-accent" title="Save configuration as default">
+              <span class="btn-icon">💾</span> Save
+            </button>
+            <button id="btn-reset-voice-config" class="action-btn btn-secondary" title="Reset to factory defaults">
+              <span class="btn-icon">🔄</span> Reset
+            </button>
+          </div>
+          <div id="voice-config-status" style="font-family: var(--font-pixel); font-size: 0.75rem; color: var(--accent-primary); margin-top: 8px; text-align: center; display: none;"></div>
         </div>
 
       </aside>

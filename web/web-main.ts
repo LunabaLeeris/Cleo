@@ -1,5 +1,12 @@
 import { inject as injectVercelAnalytics } from '@vercel/analytics';
-import { AvatarCompositor, defaultAvatarConfig, defaultSpeechOrchestrator, ChleoExpression, WORD_FRAME_MAP } from '../src/avatar';
+import {
+  AvatarCompositor,
+  defaultAvatarConfig,
+  defaultSpeechOrchestrator,
+  defaultTTSModulator,
+  ChleoExpression,
+  WORD_FRAME_MAP,
+} from '../src/avatar';
 
 // Initialize Vercel Analytics to track visits & traffic on Vercel deployment
 injectVercelAnalytics();
@@ -97,7 +104,7 @@ injectVercelAnalytics();
   }
 
   // Display speech bubble text and trigger mouth speaking animation.
-  async function speakText(text: string, enableTTS = true): void {
+  async function speakText(text: string, enableTTS = true): Promise<void> {
     if (speechTimer) clearTimeout(speechTimer);
     if (bubbleTimer) clearTimeout(bubbleTimer);
 
@@ -303,6 +310,165 @@ injectVercelAnalytics();
     const scale = parseInt(scaleSlider.value, 10);
     scaleVal.innerText = `${scale}×`;
     compositor.setScale(scale);
+  });
+
+  // Event Listeners: Robotic Voice Modulation Controls
+  const pitchSlider = document.getElementById('pitch-slider') as HTMLInputElement;
+  const pitchVal = document.getElementById('pitch-value') as HTMLSpanElement;
+  const rateSlider = document.getElementById('rate-slider') as HTMLInputElement;
+  const rateVal = document.getElementById('rate-value') as HTMLSpanElement;
+  const volumeSlider = document.getElementById('volume-slider') as HTMLInputElement;
+  const volumeVal = document.getElementById('volume-value') as HTMLSpanElement;
+  const blendSlider = document.getElementById('blend-slider') as HTMLInputElement;
+  const blendVal = document.getElementById('blend-value') as HTMLSpanElement;
+  const f0Slider = document.getElementById('f0-slider') as HTMLInputElement;
+  const f0Val = document.getElementById('f0-value') as HTMLSpanElement;
+  const f1Slider = document.getElementById('f1-slider') as HTMLInputElement;
+  const f1Val = document.getElementById('f1-value') as HTMLSpanElement;
+  const f2Slider = document.getElementById('f2-slider') as HTMLInputElement;
+  const f2Val = document.getElementById('f2-value') as HTMLSpanElement;
+  const vibratoRateSlider = document.getElementById('vibrato-rate-slider') as HTMLInputElement;
+  const vibratoRateVal = document.getElementById('vibrato-rate-value') as HTMLSpanElement;
+  const vibratoDepthSlider = document.getElementById('vibrato-depth-slider') as HTMLInputElement;
+  const vibratoDepthVal = document.getElementById('vibrato-depth-value') as HTMLSpanElement;
+  const distortionSlider = document.getElementById('distortion-slider') as HTMLInputElement;
+  const distortionVal = document.getElementById('distortion-value') as HTMLSpanElement;
+
+  const btnTestVoice = document.getElementById('btn-test-voice');
+  const btnSaveVoiceConfig = document.getElementById('btn-save-voice-config');
+  const btnResetVoiceConfig = document.getElementById('btn-reset-voice-config');
+  const voiceStatus = document.getElementById('voice-config-status');
+
+  function showVoiceStatus(msg: string): void {
+    if (!voiceStatus) return;
+    voiceStatus.innerText = msg;
+    voiceStatus.style.display = 'block';
+    setTimeout(() => {
+      voiceStatus.style.display = 'none';
+    }, 3000);
+  }
+
+  function updateVoiceUIFromConfig(): void {
+    const cfg = defaultTTSModulator.getConfig();
+    if (pitchSlider && pitchVal) {
+      pitchSlider.value = cfg.speechPitch.toString();
+      pitchVal.innerText = cfg.speechPitch.toFixed(2);
+    }
+    if (rateSlider && rateVal) {
+      rateSlider.value = cfg.speechRate.toString();
+      rateVal.innerText = cfg.speechRate.toFixed(2);
+    }
+    if (volumeSlider && volumeVal) {
+      volumeSlider.value = cfg.masterVolume.toString();
+      volumeVal.innerText = cfg.masterVolume.toFixed(2);
+    }
+    if (blendSlider && blendVal) {
+      blendSlider.value = cfg.robotToneBlend.toString();
+      blendVal.innerText = cfg.robotToneBlend.toFixed(2);
+    }
+    if (f0Slider && f0Val) {
+      f0Slider.value = cfg.f0.toString();
+      f0Val.innerText = `${cfg.f0}Hz`;
+    }
+    if (f1Slider && f1Val) {
+      f1Slider.value = cfg.f1.toString();
+      f1Val.innerText = `${cfg.f1}Hz`;
+    }
+    if (f2Slider && f2Val) {
+      f2Slider.value = cfg.f2.toString();
+      f2Val.innerText = `${cfg.f2}Hz`;
+    }
+    if (vibratoRateSlider && vibratoRateVal) {
+      vibratoRateSlider.value = (cfg.vibratoRate ?? 5.0).toString();
+      vibratoRateVal.innerText = `${(cfg.vibratoRate ?? 5.0).toFixed(1)}Hz`;
+    }
+    if (vibratoDepthSlider && vibratoDepthVal) {
+      vibratoDepthSlider.value = (cfg.vibratoDepth ?? 0.15).toString();
+      vibratoDepthVal.innerText = (cfg.vibratoDepth ?? 0.15).toFixed(2);
+    }
+    if (distortionSlider && distortionVal) {
+      distortionSlider.value = (cfg.distortion ?? 0.20).toString();
+      distortionVal.innerText = (cfg.distortion ?? 0.20).toFixed(2);
+    }
+  }
+
+  // Initialize UI with current config values
+  updateVoiceUIFromConfig();
+
+  pitchSlider?.addEventListener('input', () => {
+    const val = parseFloat(pitchSlider.value);
+    pitchVal.innerText = val.toFixed(2);
+    defaultTTSModulator.updateConfig({ speechPitch: val });
+  });
+
+  rateSlider?.addEventListener('input', () => {
+    const val = parseFloat(rateSlider.value);
+    rateVal.innerText = val.toFixed(2);
+    defaultTTSModulator.updateConfig({ speechRate: val });
+  });
+
+  volumeSlider?.addEventListener('input', () => {
+    const val = parseFloat(volumeSlider.value);
+    volumeVal.innerText = val.toFixed(2);
+    defaultTTSModulator.updateConfig({ masterVolume: val });
+  });
+
+  blendSlider?.addEventListener('input', () => {
+    const val = parseFloat(blendSlider.value);
+    blendVal.innerText = val.toFixed(2);
+    defaultTTSModulator.updateConfig({ robotToneBlend: val });
+  });
+
+  f0Slider?.addEventListener('input', () => {
+    const val = parseInt(f0Slider.value, 10);
+    f0Val.innerText = `${val}Hz`;
+    defaultTTSModulator.updateConfig({ f0: val });
+  });
+
+  f1Slider?.addEventListener('input', () => {
+    const val = parseInt(f1Slider.value, 10);
+    f1Val.innerText = `${val}Hz`;
+    defaultTTSModulator.updateConfig({ f1: val });
+  });
+
+  f2Slider?.addEventListener('input', () => {
+    const val = parseInt(f2Slider.value, 10);
+    f2Val.innerText = `${val}Hz`;
+    defaultTTSModulator.updateConfig({ f2: val });
+  });
+
+  vibratoRateSlider?.addEventListener('input', () => {
+    const val = parseFloat(vibratoRateSlider.value);
+    vibratoRateVal.innerText = `${val.toFixed(1)}Hz`;
+    defaultTTSModulator.updateConfig({ vibratoRate: val });
+  });
+
+  vibratoDepthSlider?.addEventListener('input', () => {
+    const val = parseFloat(vibratoDepthSlider.value);
+    vibratoDepthVal.innerText = val.toFixed(2);
+    defaultTTSModulator.updateConfig({ vibratoDepth: val });
+  });
+
+  distortionSlider?.addEventListener('input', () => {
+    const val = parseFloat(distortionSlider.value);
+    distortionVal.innerText = val.toFixed(2);
+    defaultTTSModulator.updateConfig({ distortion: val });
+  });
+
+  btnTestVoice?.addEventListener('click', () => {
+    const testText = speechInput?.value.trim() || 'get me some water';
+    speakText(testText, true);
+  });
+
+  btnSaveVoiceConfig?.addEventListener('click', () => {
+    defaultTTSModulator.saveConfig();
+    showVoiceStatus('Modulation settings saved as default!');
+  });
+
+  btnResetVoiceConfig?.addEventListener('click', () => {
+    defaultTTSModulator.resetToDefault();
+    updateVoiceUIFromConfig();
+    showVoiceStatus('Reset to default voice settings.');
   });
 
   // Event Listeners: Theme Switchers (Cream vs Pixel Grid)
