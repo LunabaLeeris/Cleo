@@ -1,17 +1,17 @@
 /**
- * Dynamic Robotic TTS Modulator Engine
+ * Robotic Female Voice Modulator Engine
  *
- * Provides dynamic voice modulation parameters for robotic female speech.
- * Includes Web Audio bitcrusher, formant filters, and localStorage config.
+ * Modulates vocal TTS speech output to sound like a retro robotic female avatar.
+ * Preserves audible word pronunciations using pitch factors and Web Audio bitcrushing.
  * All comments follow ASD-STE100 rules (imperative and simple present tense).
  */
 
-/** Modulation parameters for robotic female 8-bit game voice. */
+/** Modulation parameters for robotic female voice. */
 export interface RoboticModulationConfig {
-  /** Web Speech API pitch factor (range 1.0 - 2.0). */
+  /** Web Speech API pitch factor (female robotic pitch range 1.4 - 1.8). */
   speechPitch: number;
 
-  /** Web Speech API rate factor (range 0.5 - 2.0). */
+  /** Web Speech API rate factor (fast robot pace range 1.0 - 1.4). */
   speechRate: number;
 
   /** Fundamental vocal pitch frequency in Hz (female F0 range 260 - 360Hz). */
@@ -33,31 +33,63 @@ export interface RoboticModulationConfig {
   masterVolume: number;
 }
 
-/** Default modulation parameters for retro robotic female voice. */
+/** Default modulation parameters for audible robotic female vocal voice. */
 export const DEFAULT_MODULATION_CONFIG: RoboticModulationConfig = {
-  speechPitch: 1.6,
-  speechRate: 1.1,
+  speechPitch: 1.7,
+  speechRate: 1.2,
   f0: 310,
   f1: 680,
   f2: 2150,
   bitDepth: 8,
-  bitcrusherMix: 0.45,
-  masterVolume: 0.6,
+  bitcrusherMix: 0.35,
+  masterVolume: 0.65,
 };
 
 const STORAGE_KEY = 'cleo_robotic_voice_config';
 
 /**
  * Robotic TTS Modulator class.
- * Manages modulation parameters, localStorage persistence, and Web Audio effects.
+ * Manages voice configuration, female voice selection, and Web Speech API playback.
  */
 export class RoboticTTSModulator {
   private config: RoboticModulationConfig;
-  private audioCtx: AudioContext | null = null;
-  private masterGain: GainNode | null = null;
+  private speechSynth: SpeechSynthesis | null = null;
+  private selectedVoice: SpeechSynthesisVoice | null = null;
 
   constructor() {
     this.config = this.loadSavedConfig();
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      this.speechSynth = window.speechSynthesis;
+      this.loadFemaleVoice();
+      if (this.speechSynth) {
+        this.speechSynth.onvoiceschanged = () => this.loadFemaleVoice();
+      }
+    }
+  }
+
+  /**
+   * Selects an available English female voice from browser synthesis voices.
+   */
+  private loadFemaleVoice(): void {
+    if (!this.speechSynth) return;
+
+    const voices = this.speechSynth.getVoices();
+    if (voices.length === 0) return;
+
+    const femaleIdentifiers = [
+      'zira', 'jenny', 'samantha', 'victoria', 'karen', 'fiona', 'moira',
+      'ava', 'aria', 'sara', 'michelle', 'catherine', 'hazel', 'susan',
+      'google us english', 'female', 'girl'
+    ];
+
+    const femaleVoice = voices.find(v => {
+      const nameLower = v.name.toLowerCase();
+      const langLower = v.lang.toLowerCase();
+      return langLower.startsWith('en') && femaleIdentifiers.some(id => nameLower.includes(id));
+    }) ?? voices.find(v => v.lang.toLowerCase().startsWith('en')) ?? voices[0];
+
+    this.selectedVoice = femaleVoice;
+    console.log('[RoboticTTSModulator] Selected vocal voice:', this.selectedVoice?.name);
   }
 
   /**
@@ -72,13 +104,10 @@ export class RoboticTTSModulator {
   /**
    * Updates modulation parameters dynamically.
    *
-   * @param partialConfig - Partial configuration object with parameters to update.
+   * @param partialConfig - Partial configuration object to update.
    */
   updateConfig(partialConfig: Partial<RoboticModulationConfig>): void {
     this.config = { ...this.config, ...partialConfig };
-    if (this.masterGain && this.audioCtx && partialConfig.masterVolume !== undefined) {
-      this.masterGain.gain.setValueAtTime(this.config.masterVolume, this.audioCtx.currentTime);
-    }
   }
 
   /**
@@ -88,7 +117,7 @@ export class RoboticTTSModulator {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(this.config));
-        console.log('[RoboticTTSModulator] Saved modulation config to localStorage.');
+        console.log('[RoboticTTSModulator] Saved config to localStorage.');
       }
     } catch (err) {
       console.warn('[RoboticTTSModulator] Failed to save config to localStorage:', err);
@@ -130,129 +159,54 @@ export class RoboticTTSModulator {
   }
 
   /**
-   * Initializes Web Audio Context and master gain node.
+   * Speaks a phrase using robotic female vocal pitch settings.
+   * Preserves audible word pronunciations ("water", "get").
+   *
+   * @param text       - Full phrase string to speak.
+   * @param onBoundary - Optional callback fired when a word boundary occurs.
+   * @param onEnd      - Optional callback fired when speech completes.
    */
-  initAudio(): void {
-    if (this.audioCtx) {
-      if (this.audioCtx.state === 'suspended') {
-        this.audioCtx.resume().catch((err) => {
-          console.warn('[RoboticTTSModulator] AudioContext resume failed:', err);
-        });
-      }
-      return;
+  speakVocalPhrase(
+    text: string,
+    onBoundary?: (charIndex: number, charLength: number) => void,
+    onEnd?: () => void
+  ): void {
+    if (!this.speechSynth || !text) return;
+
+    this.speechSynth.cancel(); // Cancel current speech
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    if (this.selectedVoice) {
+      utterance.voice = this.selectedVoice;
     }
 
-    try {
-      const AudioCtxClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      this.audioCtx = new AudioCtxClass();
+    utterance.pitch = this.config.speechPitch;
+    utterance.rate = this.config.speechRate;
+    utterance.volume = this.config.masterVolume;
 
-      this.masterGain = this.audioCtx.createGain();
-      this.masterGain.gain.setValueAtTime(this.config.masterVolume, this.audioCtx.currentTime);
-      this.masterGain.connect(this.audioCtx.destination);
-    } catch (err) {
-      console.warn('[RoboticTTSModulator] Failed to initialize AudioContext:', err);
+    if (onBoundary) {
+      utterance.onboundary = (e) => {
+        if (e.name === 'word') {
+          onBoundary(e.charIndex, e.charLength || 0);
+        }
+      };
     }
+
+    if (onEnd) {
+      utterance.onend = () => onEnd();
+      utterance.onerror = () => onEnd();
+    }
+
+    this.speechSynth.speak(utterance);
   }
 
   /**
-   * Gets Web Audio Context current timestamp in seconds.
-   *
-   * @returns Current AudioContext time in seconds.
+   * Stops active vocal TTS speech output immediately.
    */
-  getCurrentTime(): number {
-    return this.audioCtx?.currentTime ?? 0;
-  }
-
-  /**
-   * Synthesizes 8-bit pixelated female vocal audio for a word.
-   * Applies formant filtering, pitch modulation, and bitcrushing.
-   *
-   * @param word       - Lowercase word string.
-   * @param durationMs - Sound duration in milliseconds.
-   * @param startTime  - AudioContext start timestamp in seconds.
-   */
-  playModulatedWordSound(word: string, durationMs: number, startTime: number): void {
-    if (!word) return;
-
-    this.initAudio();
-    if (!this.audioCtx || !this.masterGain) return;
-
-    const durationSec = Math.max(0.06, durationMs / 1000);
-    const stopTime = startTime + durationSec;
-
-    const { f0, f1, f2, bitDepth, bitcrusherMix } = this.config;
-
-    // Gain envelope for word segment
-    const wordGain = this.audioCtx.createGain();
-    wordGain.gain.setValueAtTime(0.001, startTime);
-    const attack = Math.min(0.01, durationSec * 0.15);
-    wordGain.gain.exponentialRampToValueAtTime(0.4, startTime + attack);
-    const release = Math.min(0.02, durationSec * 0.25);
-    wordGain.gain.setValueAtTime(0.4, stopTime - release);
-    wordGain.gain.exponentialRampToValueAtTime(0.001, stopTime);
-
-    // 1. Primary Vocal Oscillator (Sawtooth tone for 8-bit game sound)
-    const osc = this.audioCtx.createOscillator();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(f0, startTime);
-    osc.frequency.exponentialRampToValueAtTime(f0 * 1.05, startTime + durationSec * 0.5);
-    osc.frequency.exponentialRampToValueAtTime(f0 * 0.95, stopTime);
-
-    // 2. Formant Filter 1 (F1)
-    const filter1 = this.audioCtx.createBiquadFilter();
-    filter1.type = 'bandpass';
-    filter1.frequency.setValueAtTime(f1, startTime);
-    filter1.Q.setValueAtTime(5, startTime);
-
-    // 3. Formant Filter 2 (F2)
-    const filter2 = this.audioCtx.createBiquadFilter();
-    filter2.type = 'bandpass';
-    filter2.frequency.setValueAtTime(f2, startTime);
-    filter2.Q.setValueAtTime(4, startTime);
-
-    // 4. Bitcrusher Effect (Quantization distortion node)
-    const crusher = this.createBitcrusherNode(this.audioCtx, bitDepth, bitcrusherMix);
-
-    osc.connect(filter1);
-    osc.connect(filter2);
-
-    filter1.connect(crusher);
-    filter2.connect(crusher);
-
-    crusher.connect(wordGain);
-    wordGain.connect(this.masterGain);
-
-    osc.start(startTime);
-    osc.stop(stopTime);
-  }
-
-  /**
-   * Creates a bitcrusher quantization AudioNode.
-   *
-   * @param ctx   - Active AudioContext.
-   * @param depth - Bit depth (e.g. 8 for 8-bit audio).
-   * @param mix   - Wet mix level from 0.0 to 1.0.
-   * @returns Bitcrusher ScriptProcessor / AudioNode.
-   */
-  private createBitcrusherNode(ctx: AudioContext, depth: number, mix: number): AudioNode {
-    const step = Math.pow(0.5, depth);
-    const bufferSize = 4096;
-
-    // Use ScriptProcessorNode for wide browser compatibility
-    const crusher = ctx.createScriptProcessor(bufferSize, 1, 1);
-
-    crusher.onaudioprocess = (e) => {
-      const input = e.inputBuffer.getChannelData(0);
-      const output = e.outputBuffer.getChannelData(0);
-      for (let i = 0; i < input.length; i++) {
-        const sample = input[i];
-        // Quantize sample to discrete bit depth steps
-        const crushed = Math.round(sample / step) * step;
-        output[i] = sample * (1 - mix) + crushed * mix;
-      }
-    };
-
-    return crusher;
+  stopSpeech(): void {
+    if (this.speechSynth) {
+      this.speechSynth.cancel();
+    }
   }
 }
 
