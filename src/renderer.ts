@@ -1,5 +1,5 @@
 import './index.css';
-import { AvatarCompositor, defaultAvatarConfig } from './avatar';
+import { AvatarCompositor, defaultAvatarConfig, defaultSpeechOrchestrator } from './avatar';
 
 // Type checking definitions for exposed window API
 interface Window {
@@ -122,29 +122,28 @@ canvas.addEventListener('click', () => {
 
 let speakingTimeout: NodeJS.Timeout;
 let bubbleTimeout: NodeJS.Timeout;
-function showSpeechBubble(text: string) {
-  bubble.innerText = text;
-  bubble.classList.add('visible');
 
+/**
+ * Displays speech bubble and plays synchronized avatar speech.
+ * Pre-renders audio, calculates TTS hold ticks, then triggers playback.
+ */
+async function showSpeechBubble(text: string): Promise<void> {
   clearTimeout(speakingTimeout);
   clearTimeout(bubbleTimeout);
 
-  // Compose the animation first to calculate tick-based duration.
-  const result = compositor.composeSpeakAnimation(text);
-  compositor.playSpeakSequence(result);
-
-  // Calculate the duration from the composed hold ticks.
-  // Use the mouth track (longest track) as the source of truth.
-  const mouthHolds = result.holdTicks.mouth;
-  const totalTicks = mouthHolds
-    ? mouthHolds.reduce((sum, h) => sum + h, 0)
-    : text.trim().split(/\s+/).length * 3; // Fallback: ~3 ticks per word
-
-  // Convert ticks to milliseconds using the compositor's tick rate.
+  // 1. Async Pre-render Phase (bubble remains hidden during computation)
   const tickMs = (defaultAvatarConfig.cycleDurationMs ?? 1000) / defaultAvatarConfig.masterFrameCount;
-  const speakingDuration = Math.max(1000, totalTicks * tickMs);
+  const packet = await defaultSpeechOrchestrator.preRenderSpeech(text, tickMs);
 
-  // The bubble stays visible for an extra 1.5 seconds after speech ends.
+  // 2. Display speech bubble when pre-render phase completes
+  bubble.innerText = text;
+  bubble.classList.add('visible');
+
+  // 3. Play mouth animation and modulated robotic female voice in sync
+  defaultSpeechOrchestrator.playPreRenderedSpeech(packet, compositor);
+
+  // 4. Set duration timeouts based on exact pre-rendered packet timing
+  const speakingDuration = Math.max(1000, packet.totalDurationMs);
   const bubbleDuration = speakingDuration + 1500;
 
   speakingTimeout = setTimeout(() => {
