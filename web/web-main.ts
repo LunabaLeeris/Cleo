@@ -1,5 +1,5 @@
 import { inject as injectVercelAnalytics } from '@vercel/analytics';
-import { AvatarCompositor, defaultAvatarConfig, ChleoExpression, WORD_FRAME_MAP } from '../src/avatar';
+import { AvatarCompositor, defaultAvatarConfig, defaultSpeechOrchestrator, ChleoExpression, WORD_FRAME_MAP } from '../src/avatar';
 
 // Initialize Vercel Analytics to track visits & traffic on Vercel deployment
 injectVercelAnalytics();
@@ -97,42 +97,52 @@ injectVercelAnalytics();
   }
 
   // Display speech bubble text and trigger mouth speaking animation.
-  function speakText(text: string, enableTTS = true): void {
-    bubble.innerText = text;
-    bubble.classList.add('visible');
-    setExpression('speak', 'Speaking', text);
-
+  async function speakText(text: string, enableTTS = true): void {
     if (speechTimer) clearTimeout(speechTimer);
     if (bubbleTimer) clearTimeout(bubbleTimer);
 
-    // Calculate duration based on word count.
-    const words = text.trim().split(/\s+/);
-    const wordCount = words[0] === '' ? 0 : words.length;
-    const speakDuration = Math.max(1200, wordCount * 450);
-    const bubbleDuration = speakDuration + 1500;
+    if (enableTTS) {
+      // 1. Async Pre-render Phase: compute TTS-driven hold ticks and pre-render modulated audio
+      const tickMs = (defaultAvatarConfig.cycleDurationMs ?? 1000) / defaultAvatarConfig.masterFrameCount;
+      const packet = await defaultSpeechOrchestrator.preRenderSpeech(text, tickMs);
 
-    // Trigger browser text-to-speech audio if supported and enabled.
-    if (enableTTS && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
+      // 2. Display speech bubble when pre-render phase completes
+      bubble.innerText = text;
+      bubble.classList.add('visible');
 
-      const girlVoice = getFemaleVoice();
-      if (girlVoice) {
-        utterance.voice = girlVoice;
-      }
+      activeLabel.innerText = 'Speaking';
 
-      utterance.rate = 1.0;
-      utterance.pitch = 1.35; // Bright, higher pitch for cute avatar girl voice
-      window.speechSynthesis.speak(utterance);
+      // 3. Play mouth animation and modulated robotic female voice in sync
+      defaultSpeechOrchestrator.playPreRenderedSpeech(packet, compositor);
+
+      const speakDuration = Math.max(1200, packet.totalDurationMs);
+      const bubbleDuration = speakDuration + 1500;
+
+      speechTimer = window.setTimeout(() => {
+        setExpression('idle', 'Idle');
+      }, speakDuration);
+
+      bubbleTimer = window.setTimeout(() => {
+        bubble.classList.remove('visible');
+      }, bubbleDuration);
+    } else {
+      bubble.innerText = text;
+      bubble.classList.add('visible');
+      setExpression('speak', 'Speaking', text);
+
+      const words = text.trim().split(/\s+/);
+      const wordCount = words[0] === '' ? 0 : words.length;
+      const speakDuration = Math.max(1200, wordCount * 450);
+      const bubbleDuration = speakDuration + 1500;
+
+      speechTimer = window.setTimeout(() => {
+        setExpression('idle', 'Idle');
+      }, speakDuration);
+
+      bubbleTimer = window.setTimeout(() => {
+        bubble.classList.remove('visible');
+      }, bubbleDuration);
     }
-
-    speechTimer = window.setTimeout(() => {
-      setExpression('idle', 'Idle');
-    }, speakDuration);
-
-    bubbleTimer = window.setTimeout(() => {
-      bubble.classList.remove('visible');
-    }, bubbleDuration);
   }
 
   // Event Listeners: Expression Buttons

@@ -19,7 +19,6 @@ import {
   type WordFrames,
 } from './speak-frame-map';
 import { computeHoldTicks } from './speech-timing';
-import { analyzeProsody, applySpeedFactor, applyEmphasis } from './prosody-engine';
 
 /**
  * Runtime animation state for a single avatar part.

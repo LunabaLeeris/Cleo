@@ -16,10 +16,6 @@ export {
 } from './speak-frame-map';
 export type { WordFrames, SpeechToken } from './speak-frame-map';
 export { computeHoldTicks, totalTicks } from './speech-timing';
-export { analyzeProsody, applySpeedFactor, applyEmphasis } from './prosody-engine';
-export type { ProsodyProfile } from './prosody-engine';
-export { lookupWord, getSyllableCount, estimateSyllableCount } from './cmu-dict';
-export type { PhonemeData } from './cmu-dict';
 export type {
   PartName,
   Vec2,
