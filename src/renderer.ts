@@ -85,7 +85,7 @@ window.addEventListener('mouseup', () => {
 // State helpers
 /**
  * Start speaking animation with text-aware composition.
- * Uses the full prosody + timing pipeline.
+ * Uses the speech animation pipeline.
  */
 function startSpeaking(text: string): void {
   compositor.setExpression('speak', text);

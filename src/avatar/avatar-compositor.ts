@@ -178,14 +178,12 @@ export class AvatarCompositor {
    *
    * Pipeline:
    *  1. Tokenize text into words and trailing punctuation.
-   *  2. Analyze phrase-level prosody (speed, pauses, emphasis).
-   *  3. Look up each word in the frame map (fall back to default).
-   *  4. Compute hold-tick timing per word (syllable-weighted, CMU-based).
-   *  5. Apply prosody speed factors and emphasis to hold ticks.
-   *  6. Concatenate frames per part with coarticulation-aware gaps.
-   *  7. Cascade eye/brow expressions across words without explicit entries.
-   *  8. Inject blink frames during long utterances.
-   *  9. After punctuation, duplicate the last frame to simulate a pause.
+   *  2. Look up each word in the frame map (fall back to default).
+   *  3. Compute hold-tick timing per word.
+   *  4. Concatenate frames per part with coarticulation-aware gaps.
+   *  5. Cascade eye/brow expressions across words without explicit entries.
+   *  6. Inject blink frames during long utterances.
+   *  7. After punctuation, duplicate the last frame to simulate a pause.
    *
    * @returns A composition result with frame arrays and hold ticks per part.
    */
@@ -198,9 +196,6 @@ export class AvatarCompositor {
 
     console.log(`[AvatarCompositor] Composing speak animation for ${tokens.length} token(s):`,
       tokens.map(t => `"${t.word}"${t.trailingPunctuation}`).join(' '));
-
-    // --- Prosody analysis ---
-    const prosody = analyzeProsody(tokens);
 
     // Accumulate frames and hold ticks per part across all tokens.
     const composed: Partial<Record<PartName, string[]>> = {};
@@ -224,13 +219,7 @@ export class AvatarCompositor {
       const mouthFrames = wordFrames.mouth ?? [];
 
       // --- Compute hold ticks for this word ---
-      let wordHolds = computeHoldTicks(token.word, mouthFrames);
-
-      // Apply prosody speed factor.
-      wordHolds = applySpeedFactor([...wordHolds], prosody.speedFactors[i]);
-
-      // Apply prosody emphasis.
-      wordHolds = applyEmphasis(wordHolds, prosody.emphasisLevels[i]);
+      const wordHolds = computeHoldTicks(token.word, mouthFrames);
 
       // --- Expression cascading ---
       // If this word has explicit eye/brow frames, use and remember them.
@@ -241,9 +230,12 @@ export class AvatarCompositor {
       if (wordFrames.eyes) lastEyeFrames = wordFrames.eyes;
       if (wordFrames.eyebrows) lastBrowFrames = wordFrames.eyebrows;
 
+      // Inter-word gap: 0 if previous word had punctuation, 1 otherwise
+      const prevHasPunctuation = i > 0 && tokens[i - 1].trailingPunctuation.length > 0;
+      const gapTicks = prevHasPunctuation ? 0 : 1;
+
       // --- Coarticulation-aware gap insertion ---
       if (i > 0 && mouthFrames.length > 0) {
-        const gapTicks = prosody.interWordPauses[i - 1];
         const nextFirstFrame = mouthFrames[0];
 
         // Skip the neutral gap when adjacent mouth shapes are compatible.
@@ -288,7 +280,6 @@ export class AvatarCompositor {
 
         // Also fill gaps for eyes (hold previous frame during mouth gaps).
         if (i > 0) {
-          const gapTicks = prosody.interWordPauses[i - 1];
           if (gapTicks > 0 && !isVowelViseme(prevLastMouthFrame ?? '')) {
             // Backfill gap frames for eyes at the gap position.
             const lastEyeFrame = alignedEyes[0];
@@ -313,7 +304,6 @@ export class AvatarCompositor {
 
         // Fill gaps for brows.
         if (i > 0) {
-          const gapTicks = prosody.interWordPauses[i - 1];
           if (gapTicks > 0 && !isVowelViseme(prevLastMouthFrame ?? '')) {
             const lastBrowFrame = alignedBrows[0];
             const insertAt = composed.eyebrows.length - alignedBrows.length;
