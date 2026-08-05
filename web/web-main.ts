@@ -7,6 +7,13 @@ import {
   defaultTTSModulator,
   ChleoExpression,
   WORD_FRAME_MAP,
+  EmotionsOrchestrator,
+  getAvatarEmotionFrames,
+  EMOTION_TO_FAMILY,
+  PrimaryEmotion,
+  ResponseType,
+  PlutchikEmotion,
+  EmotionFrameConfig,
 } from '../src/avatar';
 
 // Initialize Vercel Analytics to track visits & traffic on Vercel deployment
@@ -32,6 +39,61 @@ injectVercelAnalytics();
   compositor.start();
 
   console.log('[WebMain] AvatarCompositor initialized on web testbed.');
+
+  // Emotion Engine instance for interactive testing
+  const emotionEngine = new EmotionsOrchestrator();
+
+  // Emotion UI Controls
+  const selectEmotion1 = document.getElementById('select-primary-emotion-1') as HTMLSelectElement;
+  const selectEmotion2 = document.getElementById('select-primary-emotion-2') as HTMLSelectElement;
+  const selectResponseType = document.getElementById('select-response-type') as HTMLSelectElement;
+  const derivedEmotionDisplay = document.getElementById('derived-emotion-display') as HTMLDivElement;
+  const mappedFramesDisplay = document.getElementById('mapped-frames-display') as HTMLDivElement;
+
+  function updateEmotionStateAndDisplay(): { overallEmotion: PlutchikEmotion; responseType: ResponseType; emotionFrames: EmotionFrameConfig } {
+    const e1 = (selectEmotion1?.value || 'joy') as PrimaryEmotion;
+    const e2Value = selectEmotion2?.value || 'trust';
+    const responseType = (selectResponseType?.value || 'declarative') as ResponseType;
+
+    const stateUpdate: Partial<Record<PrimaryEmotion, number>> = {
+      joy: 0, trust: 0, fear: 0, surprise: 0, sadness: 0, disgust: 0, anger: 0, anticipation: 0
+    };
+
+    if (e2Value === 'none') {
+      stateUpdate[e1] = 0.9;
+    } else {
+      const e2 = e2Value as PrimaryEmotion;
+      if (e1 === e2) {
+        stateUpdate[e1] = 0.9;
+      } else {
+        stateUpdate[e1] = 0.8;
+        stateUpdate[e2] = 0.7;
+      }
+    }
+
+    emotionEngine.setState(stateUpdate);
+    const overallEmotion = emotionEngine.getOverallEmotion();
+    const emotionFrames = getAvatarEmotionFrames(overallEmotion, responseType);
+
+    if (derivedEmotionDisplay) {
+      derivedEmotionDisplay.innerText = overallEmotion;
+    }
+
+    if (mappedFramesDisplay) {
+      const family = EMOTION_TO_FAMILY[overallEmotion] ?? 'neutral';
+      mappedFramesDisplay.innerText = `Family: ${family} | Intent: ${responseType}`;
+    }
+
+    return { overallEmotion, responseType, emotionFrames };
+  }
+
+  // Bind change listeners to dropdowns
+  [selectEmotion1, selectEmotion2, selectResponseType].forEach(select => {
+    select?.addEventListener('change', updateEmotionStateAndDisplay);
+  });
+
+  // Initial calculation
+  updateEmotionStateAndDisplay();
 
   // Global state variables.
   let currentExpression: ChleoExpression = 'idle';
@@ -60,14 +122,12 @@ injectVercelAnalytics();
     const voices = window.speechSynthesis.getVoices();
     if (voices.length === 0) return null;
 
-    // Common female voice identifiers across Windows, macOS, Android, iOS, Chrome, Edge
     const femaleIdentifiers = [
       'zira', 'jenny', 'samantha', 'victoria', 'karen', 'fiona', 'moira',
       'ava', 'aria', 'sara', 'michelle', 'catherine', 'hazel', 'susan',
       'google us english', 'female', 'girl'
     ];
 
-    // 1. Try finding an English female voice
     const englishFemale = voices.find(v => {
       const nameLower = v.name.toLowerCase();
       const langLower = v.lang.toLowerCase();
@@ -79,14 +139,12 @@ injectVercelAnalytics();
       return cachedFemaleVoice;
     }
 
-    // 2. Fallback to any voice with female keyword
     const anyFemale = voices.find(v => femaleIdentifiers.some(id => v.name.toLowerCase().includes(id)));
     if (anyFemale) {
       cachedFemaleVoice = anyFemale;
       return cachedFemaleVoice;
     }
 
-    // 3. Fallback to any English voice
     const anyEnglish = voices.find(v => v.lang.toLowerCase().startsWith('en'));
     if (anyEnglish) {
       cachedFemaleVoice = anyEnglish;
@@ -96,7 +154,6 @@ injectVercelAnalytics();
     return voices[0] || null;
   }
 
-  // Pre-warm voices cache on load
   if ('speechSynthesis' in window) {
     window.speechSynthesis.onvoiceschanged = () => {
       cachedFemaleVoice = null;
@@ -104,30 +161,35 @@ injectVercelAnalytics();
     };
   }
 
-  // Display speech bubble text and trigger mouth speaking animation.
+  // Display speech bubble text and trigger avatar emotion speech.
   async function speakText(text: string, enableTTS = true): Promise<void> {
     if (speechTimer) clearTimeout(speechTimer);
     if (bubbleTimer) clearTimeout(bubbleTimer);
 
+    const { overallEmotion, responseType, emotionFrames } = updateEmotionStateAndDisplay();
+
     if (enableTTS) {
-      // 1. Async Pre-render Phase: compute TTS-driven hold ticks and pre-render modulated audio
+      // 1. Async Pre-render Phase
       const tickMs = (defaultAvatarConfig.cycleDurationMs ?? 1000) / defaultAvatarConfig.masterFrameCount;
       const packet = await defaultSpeechOrchestrator.preRenderSpeech(text, tickMs);
 
-      // 2. Display speech bubble when pre-render phase completes
+      // 2. Inject emotionFrames into composed animation result
+      packet.animationResult = compositor.composeSpeakAnimation(text, emotionFrames);
+
+      // 3. Display speech bubble
       bubble.innerText = text;
       bubble.classList.add('visible');
+      activeLabel.innerText = `Speaking (${overallEmotion})`;
 
-      activeLabel.innerText = 'Speaking';
-
-      // 3. Play mouth animation and modulated robotic female voice in sync
+      // 4. Play mouth animation & audio in sync with emotion frames
       defaultSpeechOrchestrator.playPreRenderedSpeech(packet, compositor);
 
       const speakDuration = Math.max(1200, packet.totalDurationMs);
       const bubbleDuration = speakDuration + 1500;
 
       speechTimer = window.setTimeout(() => {
-        setExpression('idle', 'Idle');
+        compositor.resetAll();
+        activeLabel.innerText = 'Idle';
       }, speakDuration);
 
       bubbleTimer = window.setTimeout(() => {
@@ -136,7 +198,10 @@ injectVercelAnalytics();
     } else {
       bubble.innerText = text;
       bubble.classList.add('visible');
-      setExpression('speak', 'Speaking', text);
+
+      const result = compositor.composeSpeakAnimation(text, emotionFrames);
+      compositor.playSpeakSequence(result);
+      activeLabel.innerText = `Speaking (${overallEmotion})`;
 
       const words = text.trim().split(/\s+/);
       const wordCount = words[0] === '' ? 0 : words.length;
@@ -144,7 +209,8 @@ injectVercelAnalytics();
       const bubbleDuration = speakDuration + 1500;
 
       speechTimer = window.setTimeout(() => {
-        setExpression('idle', 'Idle');
+        compositor.resetAll();
+        activeLabel.innerText = 'Idle';
       }, speakDuration);
 
       bubbleTimer = window.setTimeout(() => {
@@ -152,41 +218,6 @@ injectVercelAnalytics();
       }, bubbleDuration);
     }
   }
-
-  // Event Listeners: Expression Buttons
-  document.getElementById('btn-blink')?.addEventListener('click', () => {
-    setExpression('blink', 'Blinking');
-  });
-
-  document.getElementById('btn-sleep')?.addEventListener('click', () => {
-    setExpression('sleep', 'Sleeping');
-    speakText('Zzz... system in sleep mode...', false);
-  });
-
-  document.getElementById('btn-close-eyes')?.addEventListener('click', () => {
-    setExpression('close_eyes', 'Eyes Closed');
-  });
-
-  document.getElementById('btn-angry')?.addEventListener('click', () => {
-    setExpression('angry', 'Angry');
-    speakText('Hey! Stop bothering me!', false);
-  });
-
-  document.getElementById('btn-yawn')?.addEventListener('click', () => {
-    setExpression('yawn', 'Yawning');
-    speakText('Yaaaaawn... so tired...', false);
-  });
-
-  document.getElementById('btn-question')?.addEventListener('click', () => {
-    setExpression('question', 'Confused');
-    speakText('Huh? What do you mean?', false);
-  });
-
-  document.getElementById('btn-reset')?.addEventListener('click', () => {
-    setExpression('idle', 'Idle');
-    bubble.classList.remove('visible');
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-  });
 
   // Click on avatar canvas directly triggers blink.
   canvas.addEventListener('click', () => {
@@ -217,7 +248,7 @@ injectVercelAnalytics();
   // Event Listeners & Logic: Mapped Words View
   const btnMappedWords = document.getElementById('btn-mapped-words');
   const btnBackMapped = document.getElementById('btn-back-mapped');
-  const sectionExpressions = document.getElementById('section-expressions');
+  const sectionEmotions = document.getElementById('section-emotions');
   const sectionActivity = document.getElementById('section-activity');
   const sectionMappedWords = document.getElementById('section-mapped-words');
   const mappedSearchInput = document.getElementById('mapped-search-input') as HTMLInputElement;
@@ -259,7 +290,7 @@ injectVercelAnalytics();
   }
 
   btnMappedWords?.addEventListener('click', () => {
-    if (sectionExpressions) sectionExpressions.style.display = 'none';
+    if (sectionEmotions) sectionEmotions.style.display = 'none';
     if (sectionActivity) sectionActivity.style.display = 'none';
     if (sectionMappedWords) sectionMappedWords.style.display = 'flex';
     renderMappedWords(mappedSearchInput?.value ?? '');
@@ -267,7 +298,7 @@ injectVercelAnalytics();
 
   btnBackMapped?.addEventListener('click', () => {
     if (sectionMappedWords) sectionMappedWords.style.display = 'none';
-    if (sectionExpressions) sectionExpressions.style.display = 'flex';
+    if (sectionEmotions) sectionEmotions.style.display = 'flex';
     if (sectionActivity) sectionActivity.style.display = 'flex';
   });
 

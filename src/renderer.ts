@@ -25,7 +25,8 @@ const compositor = new AvatarCompositor(canvas, defaultAvatarConfig);
 
 // Smooth window
 let isDragging = false;
-let startX = 0;
+
+let startX = 0; 
 let startY = 0;
 
 // State to track if mouse is over interactive parts (avatar or speech bubble)
@@ -156,4 +157,4 @@ async function showSpeechBubble(text: string): Promise<void> {
 }
 
 // [TO DO] TTS
-// [TO DO] Activities
+// [TO DO] Activities

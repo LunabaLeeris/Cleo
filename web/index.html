@@ -107,34 +107,59 @@
           <button id="btn-close-drawer" class="drawer-close-btn" title="Close Panel">✕</button>
         </div>
 
-        <!-- Section 1: Expressions & Reactions -->
-        <div class="panel-section panel-bg-actions" id="section-expressions">
+        <!-- Section 1: Avatar Emotion Engine Controls -->
+        <div class="panel-section panel-bg-actions" id="section-emotions">
           <h2 class="section-title">
-            <span class="title-icon">😊</span>
-            Expressions & Actions
+            <span class="title-icon">🎭</span>
+            Avatar Emotion Engine
           </h2>
-          <div class="button-grid">
-            <button id="btn-blink" class="action-btn">
-              <span class="btn-icon">👁️</span> Blink
-            </button>
-            <button id="btn-sleep" class="action-btn">
-              <span class="btn-icon">😴</span> Sleep
-            </button>
-            <button id="btn-close-eyes" class="action-btn">
-              <span class="btn-icon">😑</span> Close Eyes
-            </button>
-            <button id="btn-angry" class="action-btn">
-              <span class="btn-icon">😠</span> Angry
-            </button>
-            <button id="btn-yawn" class="action-btn">
-              <span class="btn-icon">🥱</span> Yawn
-            </button>
-            <button id="btn-question" class="action-btn">
-              <span class="btn-icon">❓</span> Question
-            </button>
-            <button id="btn-reset" class="action-btn btn-accent">
-              <span class="btn-icon">🔄</span> Reset Idle
-            </button>
+
+          <div class="emotion-select-group" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
+            <div class="select-field">
+              <label for="select-primary-emotion-1" style="font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 4px; display: block;">Top Emotion 1</label>
+              <select id="select-primary-emotion-1" class="text-input" style="padding: 6px 10px; cursor: pointer; width: 100%;">
+                <option value="joy" selected>Joy</option>
+                <option value="trust">Trust</option>
+                <option value="fear">Fear</option>
+                <option value="surprise">Surprise</option>
+                <option value="sadness">Sadness</option>
+                <option value="disgust">Disgust</option>
+                <option value="anger">Anger</option>
+                <option value="anticipation">Anticipation</option>
+              </select>
+            </div>
+
+            <div class="select-field">
+              <label for="select-primary-emotion-2" style="font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 4px; display: block;">Top Emotion 2</label>
+              <select id="select-primary-emotion-2" class="text-input" style="padding: 6px 10px; cursor: pointer; width: 100%;">
+                <option value="trust" selected>Trust</option>
+                <option value="joy">Joy</option>
+                <option value="fear">Fear</option>
+                <option value="surprise">Surprise</option>
+                <option value="sadness">Sadness</option>
+                <option value="disgust">Disgust</option>
+                <option value="anger">Anger</option>
+                <option value="anticipation">Anticipation</option>
+                <option value="none">None (Single Primary)</option>
+              </select>
+            </div>
+
+            <div class="select-field">
+              <label for="select-response-type" style="font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 4px; display: block;">Response Type</label>
+              <select id="select-response-type" class="text-input" style="padding: 6px 10px; cursor: pointer; width: 100%;">
+                <option value="declarative" selected>Declarative</option>
+                <option value="exclamatory">Exclamatory</option>
+                <option value="interrogative">Interrogative</option>
+                <option value="imperative">Imperative</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Live Emotion Status Indicator -->
+          <div class="emotion-status-badge" style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; text-align: center;">
+            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8;">Plutchik Overall Emotion</div>
+            <div id="derived-emotion-display" style="font-size: 16px; font-weight: 700; color: #38bdf8; margin: 4px 0;">Love</div>
+            <div id="mapped-frames-display" style="font-size: 11px; color: #cbd5e1;">Family: joyful | Eyebrows: Both Up | Eyes: Wide</div>
           </div>
         </div>
 
