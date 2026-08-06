@@ -10,5 +10,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
     dragWindow: (dx: number, dy: number) => {
         ipcRenderer.send('drag-window', dx, dy);
+    },
+    setDragging: (dragging: boolean) => {
+        ipcRenderer.send('set-dragging', dragging);
     }
 });

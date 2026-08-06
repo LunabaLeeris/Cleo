@@ -23,50 +23,51 @@ const compositor = new AvatarCompositor(canvas, defaultAvatarConfig);
   console.log('[Renderer] AvatarCompositor started.');
 })();
 
-// Smooth window
+// State to track window dragging
 let isDragging = false;
-
 let startX = 0; 
 let startY = 0;
 
-// State to track if mouse is over interactive parts (avatar or speech bubble)
-let isMouseOverInteractive = false;
+// Helper to set interactive mode
+function setInteractive(interactive: boolean) {
+  (window as any).electronAPI?.setIgnoreMouseEvents(!interactive, { forward: true });
+}
 
-window.addEventListener('mousemove', (event) => {
-  // If we are actively dragging, keep it interactive
-  if (isDragging) return;
+// Mouse enter/leave handlers on interactive elements (avatar & speech bubble)
+avatar.addEventListener('mouseenter', () => {
+  setInteractive(true);
+});
 
-  const rectAvatar = avatar.getBoundingClientRect();
-  const rectBubble = bubble.getBoundingClientRect();
-
-  const x = event.clientX;
-  const y = event.clientY;
-
-  // Check if mouse coordinates are within avatar or visible bubble boundaries
-  const overAvatar = x >= rectAvatar.left && x <= rectAvatar.right &&
-    y >= rectAvatar.top && y <= rectAvatar.bottom;
-  const overBubble = bubble.classList.contains('visible') &&
-    x >= rectBubble.left && x <= rectBubble.right &&
-    y >= rectBubble.top && y <= rectBubble.bottom;
-
-  const shouldBeInteractive = overAvatar || overBubble;
-
-  if (shouldBeInteractive !== isMouseOverInteractive) {
-    isMouseOverInteractive = shouldBeInteractive;
-    (window as any).electronAPI?.setIgnoreMouseEvents(!shouldBeInteractive, { forward: true });
+avatar.addEventListener('mouseleave', () => {
+  if (!isDragging && !bubble.matches(':hover')) {
+    setInteractive(false);
   }
 });
 
-avatar.addEventListener('mousedown', (e) => {
+bubble.addEventListener('mouseenter', () => {
+  setInteractive(true);
+});
+
+bubble.addEventListener('mouseleave', () => {
+  if (!isDragging && !avatar.matches(':hover')) {
+    setInteractive(false);
+  }
+});
+
+avatar.addEventListener('pointerdown', (e: PointerEvent) => {
   if (e.button === 0) { // Left click only
     isDragging = true;
     startX = e.screenX;
     startY = e.screenY;
+    try {
+      avatar.setPointerCapture(e.pointerId);
+    } catch (_) {}
     avatar.style.cursor = 'grabbing';
+    (window as any).electronAPI?.setDragging(true);
   }
 });
 
-window.addEventListener('mousemove', (e) => {
+window.addEventListener('pointermove', (e: PointerEvent) => {
   if (isDragging) {
     const dx = e.screenX - startX;
     const dy = e.screenY - startY;
@@ -76,12 +77,28 @@ window.addEventListener('mousemove', (e) => {
   }
 });
 
-window.addEventListener('mouseup', () => {
+const stopDragging = (e?: PointerEvent) => {
   if (isDragging) {
     isDragging = false;
     avatar.style.cursor = 'grab';
+    if (e) {
+      try {
+        if (avatar.hasPointerCapture(e.pointerId)) {
+          avatar.releasePointerCapture(e.pointerId);
+        }
+      } catch (_) {}
+    }
+    (window as any).electronAPI?.setDragging(false);
+    
+    // Check if mouse is hovering over avatar or speech bubble
+    const isHovered = avatar.matches(':hover') || (bubble.classList.contains('visible') && bubble.matches(':hover'));
+    setInteractive(isHovered);
   }
-});
+};
+
+window.addEventListener('pointerup', stopDragging);
+window.addEventListener('pointercancel', stopDragging);
+window.addEventListener('blur', () => stopDragging());
 
 // State helpers
 /**

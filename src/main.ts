@@ -46,27 +46,81 @@ const createWindow = () => {
   return mainWindow;
 };
 
+let isUserDragging = false;
+let isCurrentlyIgnoring = false;
+
 // IPC listener so the frontend can toggle click-through toggle when hovering over the avatar
 ipcMain.on('set-ignore-mouse-events', (event: Electron.IpcMainEvent, ignore: boolean, options) => {
   const win = BrowserWindow.fromWebContents(event.sender);
-  win?.setIgnoreMouseEvents(ignore, options);
+  if (win) {
+    if (options && typeof options === 'object') {
+      win.setIgnoreMouseEvents(ignore, options);
+    } else {
+      win.setIgnoreMouseEvents(ignore);
+    }
+    isCurrentlyIgnoring = ignore;
+  }
+});
+
+// IPC listener to notify main process of drag state
+ipcMain.on('set-dragging', (event: Electron.IpcMainEvent, dragging: boolean) => {
+  isUserDragging = dragging;
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win && dragging) {
+    win.setIgnoreMouseEvents(false);
+    isCurrentlyIgnoring = false;
+  }
 });
 
 // IPC listener to allow dragging frameless window
 ipcMain.on('drag-window', (event: Electron.IpcMainEvent, dx: number, dy: number) => {
   const win = BrowserWindow.fromWebContents(event.sender);
-  if (win) {
+  if (win && typeof dx === 'number' && typeof dy === 'number') {
     const [x, y] = win.getPosition();
-    win.setPosition(x + dx, y + dy);
+    win.setPosition(Math.round(x + dx), Math.round(y + dy));
   }
 });
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
 app.on('ready', () => {
   const mainWindow = createWindow();
   startWebSocketServer(mainWindow);
+
+  // OS-level cursor tracking loop to ensure companion is always clickable when hovered
+  setInterval(() => {
+    if (!mainWindow || mainWindow.isDestroyed() || isUserDragging) return;
+
+    const point = screen.getCursorScreenPoint();
+    const bounds = mainWindow.getBounds();
+
+    const relX = point.x - bounds.x;
+    const relY = point.y - bounds.y;
+
+    const isInsideWindow = relX >= 0 && relX <= bounds.width && relY >= 0 && relY <= bounds.height;
+    if (!isInsideWindow) {
+      if (!isCurrentlyIgnoring) {
+        mainWindow.setIgnoreMouseEvents(true, { forward: true });
+        isCurrentlyIgnoring = true;
+      }
+      return;
+    }
+
+    // Avatar/Bubble region inside the 320x350 window
+    const isOverAvatarRegion = relX >= 40 && relX <= 280 && relY >= 50 && relY <= 345;
+
+    if (isOverAvatarRegion) {
+      if (isCurrentlyIgnoring) {
+        mainWindow.setIgnoreMouseEvents(false);
+        isCurrentlyIgnoring = false;
+      }
+    } else {
+      if (!isCurrentlyIgnoring) {
+        mainWindow.setIgnoreMouseEvents(true, { forward: true });
+        isCurrentlyIgnoring = true;
+      }
+    }
+  }, 50);
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common

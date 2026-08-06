@@ -15,7 +15,7 @@ export const defaultAvatarConfig: AvatarConfig = {
   canvasHeight: 64,
   masterFrameCount: 6,
   cycleDurationMs: 1000,
-  scale: 6,
+  scale: 2,
 
   parts: {
     body: {
