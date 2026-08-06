@@ -92,7 +92,7 @@ export const defaultAvatarConfig: AvatarConfig = {
           loop: 'infinite',
         },
         speak: {
-          // Dynamically composed at runtime by composeSpeakAnimation().
+          // Dynamically composed at runtime by SpeechOrchestrator from TTS timing.
           // This is a placeholder slot; srcArray is injected by playSpeakSequence().
           type: "framearray",
           srcArray: null,

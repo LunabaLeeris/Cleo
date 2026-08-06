@@ -9,18 +9,9 @@ import type {
 } from './sprite-types';
 import { PART_RENDER_ORDER } from './sprite-types';
 import { preloadAvatarSprites, ensureImagesLoaded } from './sprite-loader';
-import {
-  tokenizeText,
-  getWordFrames,
-  getPauseFrameCount,
-  WORD_GAP_FRAMES,
-  MOUTH_FRAMES,
-  EYE_FRAMES,
-  type WordFrames,
-} from './speak-frame-map';
-import { computeHoldTicks } from './speech-timing';
 import type { EmotionFrameConfig, PlutchikEmotion, ResponseType } from './emotions/emotion-types';
 import { getAvatarEmotionFrames } from './emotions/response-frame-map';
+import { defaultSpeechOrchestrator } from './tts/speech-orchestrator';
 
 /**
  * Runtime animation state for a single avatar part.
@@ -176,147 +167,6 @@ export class AvatarCompositor {
   }
 
   /**
-   * Compose per-part frame arrays and hold-tick timings from input text and emotional state.
-   *
-   * Pipeline:
-   *  1. Tokenize text into words and trailing punctuation.
-   *  2. Look up each word in the viseme frame map for mouth movements.
-   *  3. Compute hold-tick timing per word.
-   *  4. Apply eyebrow, eye, and body frame selections from emotionFrames.
-   *  5. Inject blink frames during long utterances.
-   *  6. After punctuation, duplicate the last frame to simulate a pause.
-   *
-   * @param text          - Spoken phrase text.
-   * @param emotionFrames - Optional emotion frame overrides for eyebrows, eyes, and body.
-   * @returns A composition result with frame arrays and hold ticks per part.
-   */
-  composeSpeakAnimation(
-    text: string,
-    emotionFrames?: EmotionFrameConfig
-  ): ComposedSpeakResult {
-    const tokens = tokenizeText(text);
-    if (tokens.length === 0) {
-      console.warn('[AvatarCompositor] composeSpeakAnimation called with empty text.');
-      return { frames: {}, holdTicks: {} };
-    }
-
-    console.log(`[AvatarCompositor] Composing speak animation for ${tokens.length} token(s):`,
-      tokens.map(t => `"${t.word}"${t.trailingPunctuation}`).join(' '));
-
-    // Accumulate frames and hold ticks per part across all tokens.
-    const composed: Partial<Record<PartName, string[]>> = {};
-    const composedHolds: Partial<Record<PartName, number[]>> = {};
-
-    let prevLastMouthFrame: string | null = null;
-    let totalMouthFrames = 0;
-    let lastBlinkInjection = 0;
-    const BLINK_INJECT_INTERVAL = 25; // Inject blink every ~25 mouth frames
-
-    for (let i = 0; i < tokens.length; i++) {
-      const token = tokens[i];
-      const wordFrames: WordFrames = getWordFrames(token.word);
-      const mouthFrames = wordFrames.mouth ?? [];
-
-      // --- Compute hold ticks for this word ---
-      const wordHolds = computeHoldTicks(token.word, mouthFrames);
-
-      // Inter-word gap: 0 if previous word had punctuation, 1 otherwise
-      const prevHasPunctuation = i > 0 && tokens[i - 1].trailingPunctuation.length > 0;
-      const gapTicks = prevHasPunctuation ? 0 : 1;
-
-      // --- Coarticulation-aware gap insertion ---
-      if (i > 0 && mouthFrames.length > 0) {
-        const nextFirstFrame = mouthFrames[0];
-
-        // Skip the neutral gap when adjacent mouth shapes are compatible.
-        const shouldElideGap = prevLastMouthFrame !== null && (
-          // Same viseme on both sides — hold it.
-          prevLastMouthFrame === nextFirstFrame ||
-          // Both are vowel-class visemes — blend directly.
-          (isVowelViseme(prevLastMouthFrame) && isVowelViseme(nextFirstFrame))
-        );
-
-        if (!shouldElideGap && gapTicks > 0) {
-          // Insert neutral gap frame(s).
-          if (!composed.mouth) composed.mouth = [];
-          if (!composedHolds.mouth) composedHolds.mouth = [];
-          for (let g = 0; g < gapTicks; g++) {
-            composed.mouth.push(MOUTH_FRAMES.neutral);
-            composedHolds.mouth.push(1);
-            totalMouthFrames++;
-          }
-        }
-      }
-
-      // --- Append mouth frames and hold ticks ---
-      if (mouthFrames.length > 0) {
-        if (!composed.mouth) composed.mouth = [];
-        if (!composedHolds.mouth) composedHolds.mouth = [];
-        composed.mouth.push(...mouthFrames);
-        composedHolds.mouth.push(...wordHolds);
-        totalMouthFrames += mouthFrames.length;
-        prevLastMouthFrame = mouthFrames[mouthFrames.length - 1];
-      }
-
-      // --- Punctuation pause: duplicate the last mouth frame N times ---
-      const pauseCount = getPauseFrameCount(token.trailingPunctuation);
-      if (pauseCount > 0 && composed.mouth && composedHolds.mouth) {
-        const lastFrame = composed.mouth[composed.mouth.length - 1];
-        for (let p = 0; p < pauseCount; p++) {
-          composed.mouth.push(lastFrame);
-          composedHolds.mouth.push(1);
-        }
-        totalMouthFrames += pauseCount;
-      }
-    }
-
-    // End with neutral mouth to return to idle.
-    if (composed.mouth && composed.mouth.length > 0) {
-      composed.mouth.push(MOUTH_FRAMES.closed);
-      composedHolds.mouth!.push(1);
-    }
-
-    const mouthFrameCount = composed.mouth ? composed.mouth.length : 0;
-    const mouthHoldList = composedHolds.mouth ? [...composedHolds.mouth] : [];
-
-    // --- Fill Eyebrows, Eyes, and Body from EmotionFrameConfig throughout response ---
-    if (emotionFrames && mouthFrameCount > 0) {
-      if (emotionFrames.eyebrows) {
-        composed.eyebrows = Array(mouthFrameCount).fill(emotionFrames.eyebrows);
-        composedHolds.eyebrows = [...mouthHoldList];
-      }
-      if (emotionFrames.eyes) {
-        composed.eyes = Array(mouthFrameCount).fill(emotionFrames.eyes);
-        composedHolds.eyes = [...mouthHoldList];
-      }
-      if (emotionFrames.body) {
-        composed.body = Array(mouthFrameCount).fill(emotionFrames.body);
-        composedHolds.body = [...mouthHoldList];
-      }
-    }
-
-    // --- Inject blink frames into eye sequence during long utterances ---
-    if (composed.eyes && composedHolds.eyes) {
-      for (let f = 0; f < composed.eyes.length; f++) {
-        if (f - lastBlinkInjection >= BLINK_INJECT_INTERVAL) {
-          composed.eyes[f] = EYE_FRAMES.closed;
-          composedHolds.eyes[f] = 2;
-          lastBlinkInjection = f;
-        }
-      }
-    }
-
-    // Log composed frame counts per part.
-    for (const [part, frames] of Object.entries(composed)) {
-      const holds = composedHolds[part as PartName];
-      const totalTicks = holds ? holds.reduce((s, h) => s + h, 0) : frames.length;
-      console.log(`[AvatarCompositor]   ${part}: ${frames.length} frames, ${totalTicks} total ticks`);
-    }
-
-    return { frames: composed, holdTicks: composedHolds };
-  }
-
-
   /**
    * Inject composed frame arrays and hold ticks as transient 'speak'
    * animation definitions into the runtime config. Play them once per
@@ -364,7 +214,7 @@ export class AvatarCompositor {
   }
 
   /**
-   * Play speech sequence with Plutchik emotion and sentence response type.
+   * Play speech sequence with Plutchik emotion and sentence response type using TTS.
    */
   async speakWithEmotion(
     text: string,
@@ -372,19 +222,19 @@ export class AvatarCompositor {
     responseType: ResponseType
   ): Promise<void> {
     const emotionFrames = getAvatarEmotionFrames(overallEmotion, responseType);
-    const result = this.composeSpeakAnimation(text, emotionFrames);
-    await this.playSpeakSequence(result);
+    await this.speakWithEmotionConfig(text, emotionFrames);
   }
 
   /**
-   * Play speech sequence with explicit EmotionFrameConfig override.
+   * Play speech sequence with explicit EmotionFrameConfig override using TTS.
    */
   async speakWithEmotionConfig(
     text: string,
     emotionFrames: EmotionFrameConfig
   ): Promise<void> {
-    const result = this.composeSpeakAnimation(text, emotionFrames);
-    await this.playSpeakSequence(result);
+    const tickMs = (this.config.cycleDurationMs ?? 1000) / this.config.masterFrameCount;
+    const packet = await defaultSpeechOrchestrator.preRenderSpeech(text, tickMs, emotionFrames);
+    defaultSpeechOrchestrator.playPreRenderedSpeech(packet, this);
   }
 
 
@@ -436,8 +286,10 @@ export class AvatarCompositor {
         break;
       case 'speak': {
         if (text && text.trim().length > 0) {
-          const result = this.composeSpeakAnimation(text);
-          this.playSpeakSequence(result);
+          const tickMs = (this.config.cycleDurationMs ?? 1000) / this.config.masterFrameCount;
+          defaultSpeechOrchestrator.preRenderSpeech(text, tickMs).then(packet => {
+            defaultSpeechOrchestrator.playPreRenderedSpeech(packet, this);
+          });
         } else {
           // Fallback: play static speak animation if no text provided.
           this.playAnimation('mouth', 'speak', 'once');
@@ -716,7 +568,7 @@ export interface WordStartAnchor {
 }
 
 /**
- * Result of composeSpeakAnimation(). Contains frame arrays,
+ * Result of speech composition. Contains frame arrays,
  * hold-tick arrays per part, and word boundary anchors.
  */
 export interface ComposedSpeakResult {
@@ -730,52 +582,4 @@ export interface ComposedSpeakResult {
   wordAnchors?: WordStartAnchor[];
 }
 
-/**
- * Set of vowel-class mouth viseme image sources.
- * Built from the actual imported constants so it works with any
- * URL format (Vite hashed paths, data URIs, relative paths, etc.).
- */
-const VOWEL_VISEME_SRCS = new Set([
-  MOUTH_FRAMES.aa,
-  MOUTH_FRAMES.aaa,
-  MOUTH_FRAMES.a,
-  MOUTH_FRAMES.eh,
-  MOUTH_FRAMES.ee,
-  MOUTH_FRAMES.ey,
-  MOUTH_FRAMES.i,
-  MOUTH_FRAMES.o,
-  MOUTH_FRAMES.oo,
-  MOUTH_FRAMES.u,
-]);
 
-/**
- * Test whether a frame source corresponds to a vowel viseme.
- *
- * @param frameSrc - Image source path for a mouth frame.
- * @returns True if the viseme is a vowel (open-mouth) shape.
- */
-function isVowelViseme(frameSrc: string): boolean {
-  return VOWEL_VISEME_SRCS.has(frameSrc);
-}
-
-/**
- * Stretch or trim a frame array to match a target length.
- * When the source is shorter, the last frame is repeated.
- * When the source is longer, it is truncated.
- *
- * @param frames       - Source frame array.
- * @param targetLength - Desired output length.
- * @returns New array of exactly targetLength elements.
- */
-function alignFramesToLength(frames: string[], targetLength: number): string[] {
-  if (frames.length === targetLength) return [...frames];
-  if (frames.length > targetLength) return frames.slice(0, targetLength);
-
-  // Stretch: repeat last frame to fill.
-  const result = [...frames];
-  const lastFrame = frames[frames.length - 1];
-  while (result.length < targetLength) {
-    result.push(lastFrame);
-  }
-  return result;
-}

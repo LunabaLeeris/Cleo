@@ -137,13 +137,6 @@ export const DEFAULT_WORD_FRAMES: WordFrames = {
   mouth: [MOUTH_NEUTRAL, MOUTH_AA, MOUTH_EH, MOUTH_AA, MOUTH_NEUTRAL],
 };
 
-/**
- * Frames inserted between words as a brief closed-mouth gap.
- */
-export const WORD_GAP_FRAMES: WordFrames = {
-  mouth: [MOUTH_NEUTRAL],
-};
-
 // ---------------------------------------------------------------------------
 //  WORD → VISEME FRAME MAP
 //
@@ -1014,14 +1007,4 @@ export function tokenizeText(text: string): SpeechToken[] {
  */
 export function getWordFrames(word: string): WordFrames {
   return WORD_FRAME_MAP[word] ?? DEFAULT_WORD_FRAMES;
-}
-
-/**
- * Get the number of pause frames to append after a token
- * based on its trailing punctuation.
- * Returns 0 if no punctuation pause applies.
- */
-export function getPauseFrameCount(trailingPunctuation: string): number {
-  if (!trailingPunctuation) return 0;
-  return PUNCTUATION_PAUSE_FRAMES[trailingPunctuation] ?? 0;
 }

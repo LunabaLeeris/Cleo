@@ -11,6 +11,7 @@ import { ComposedSpeakResult, AvatarCompositor, WordStartAnchor } from '../avata
 import { getWordFrames, MOUTH_FRAMES } from '../speak-frame-map';
 import { defaultTTSAnalyzer, TTSPhraseAnalysis } from './tts-analyzer';
 import { defaultTTSModulator } from './robotic-tts-modulator';
+import type { EmotionFrameConfig } from '../emotions/emotion-types';
 
 /** Pre-rendered speech packet containing TTS-driven animation and timing data. */
 export interface PreRenderedSpeechPacket {
@@ -35,11 +36,16 @@ export class SpeechOrchestrator {
   /**
    * Pre-computes animation viseme hold ticks directly from measured TTS word durations.
    *
-   * @param text   - Input text phrase string.
-   * @param tickMs - Master compositor render tick duration in milliseconds.
+   * @param text          - Input text phrase string.
+   * @param tickMs        - Master compositor render tick duration in milliseconds.
+   * @param emotionFrames - Optional emotion frame overrides for eyebrows, eyes, and body.
    * @returns Promise resolving to PreRenderedSpeechPacket object.
    */
-  async preRenderSpeech(text: string, tickMs: number): Promise<PreRenderedSpeechPacket> {
+  async preRenderSpeech(
+    text: string,
+    tickMs: number,
+    emotionFrames?: EmotionFrameConfig
+  ): Promise<PreRenderedSpeechPacket> {
     console.log('[SpeechOrchestrator] Pre-rendering speech packet for:', `"${text}"`);
 
     // Pre-warm Web Audio and TTS subsystem
@@ -96,6 +102,22 @@ export class SpeechOrchestrator {
       holdTicks: { mouth: composedHoldTicks },
       wordAnchors,
     };
+
+    if (emotionFrames) {
+      const count = composedMouthFrames.length;
+      if (emotionFrames.eyebrows) {
+        animationResult.frames.eyebrows = Array(count).fill(emotionFrames.eyebrows);
+        animationResult.holdTicks.eyebrows = [...composedHoldTicks];
+      }
+      if (emotionFrames.eyes) {
+        animationResult.frames.eyes = Array(count).fill(emotionFrames.eyes);
+        animationResult.holdTicks.eyes = [...composedHoldTicks];
+      }
+      if (emotionFrames.body) {
+        animationResult.frames.body = Array(count).fill(emotionFrames.body);
+        animationResult.holdTicks.body = [...composedHoldTicks];
+      }
+    }
 
     console.log(
       `[SpeechOrchestrator] Speech packet ready: ${totalTicks} ticks, ${totalDurationMs}ms total duration (${wordAnchors.length} word anchors).`

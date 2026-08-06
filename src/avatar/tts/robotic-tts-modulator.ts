@@ -48,6 +48,8 @@ export interface RoboticModulationConfig {
   robotToneBlend: number;
 }
 
+/** Alias for RoboticModulationConfig. */
+export type TTSModulatorConfig = RoboticModulationConfig;
 /** Default modulation parameters for audible robotic female vocal voice. */
 export const DEFAULT_MODULATION_CONFIG: RoboticModulationConfig = {
   speechPitch: 1.75,
