@@ -59,7 +59,7 @@ export const EMOTION_TO_FAMILY: Record<PlutchikEmotion, EmotionFamily> = {
     Remorse: 'sad',
     Guilt: 'sad',
     Despair: 'sad',
-    Envy: 'sad',
+    Disappointment: 'sad',
     Sentimentality: 'sad',
     Shame: 'sad',
     Pessimism: 'sad',

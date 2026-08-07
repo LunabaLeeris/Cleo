@@ -1,0 +1,96 @@
+{
+  "rules": [
+    {
+      "id": "SITE_BLOCKED_VISIT",
+      "name": "Visiting Blocked Website",
+      "conditions": {
+        "event": "SITE_BLOCKED_VISIT"
+      },
+      "emotionDeltas": {
+        "anger": 0.35,
+        "sadness": 0.25,
+        "joy": -0.25,
+        "trust": -0.23
+      },
+      "heuristicTemplates": [
+        "Hey! {domain} is completely blocked. You cannot visit it unless you complete my puzzle!",
+        "Stop trying to open {domain}! Access is restricted until you pass my challenge."
+      ],
+      "llmDirective": "Chleo is angry that the user tried to open a blocked website."
+    },
+    {
+      "id": "LIMIT_WARNING",
+      "name": "Site Usage Limit Warning",
+      "conditions": {
+        "event": "LIMIT_WARNING"
+      },
+      "emotionDeltas": {
+        "anger": 0.15,
+        "sadness": 0.10,
+        "joy": -0.15,
+        "trust": -0.13
+      },
+      "heuristicTemplates": [
+        "Warning! You have used {percent}% of your limit on {domain}. Only {remainingSeconds} seconds left!",
+        "Hey, you're almost out of time for {domain}! Wrap it up soon."
+      ],
+      "llmDirective": "Chleo warns the user sternly that their time limit on a website is almost up."
+    },
+    {
+      "id": "LIMIT_EXCEEDED",
+      "name": "Site Daily Limit Exceeded",
+      "conditions": {
+        "event": "LIMIT_EXCEEDED"
+      },
+      "emotionDeltas": {
+        "anger": 0.40,
+        "sadness": 0.30,
+        "joy": -0.1,
+        "trust": -0.1
+      },
+      "heuristicTemplates": [
+        "Time's up! You exceeded your daily limit on {domain}. It is now blocked!",
+        "You spent too much time on {domain}! I am locking access now."
+      ],
+      "llmDirective": "Chleo locks the site and scolds the user for breaking their time limit."
+    },
+    {
+      "id": "PRODUCTIVE_MILESTONE",
+      "name": "Productive Time Reward Milestone",
+      "conditions": {
+        "event": "PRODUCTIVE_MILESTONE"
+      },
+      "emotionDeltas": {
+        "joy": 0.35,
+        "trust": 0.25
+      },
+      "rewards": {
+        "coins": 50,
+        "itemDrop": "snack_apple"
+      },
+      "heuristicTemplates": [
+        "Great job! You've been productive on {domain} for {timeSpent}! Here are {coins} coins!",
+        "You're locked in! Keep up the good work on {domain}. I gave you a reward!"
+      ],
+      "llmDirective": "Chleo praises the user warmly for their focus and gives a snack or coin reward."
+    },
+    {
+      "id": "PUZZLE_UNBLOCK_PENALTY",
+      "name": "Unblocking Site via Puzzle Finish",
+      "conditions": {
+        "event": "PUZZLE_UNBLOCK_PENALTY"
+      },
+      "emotionDeltas": {
+        "anger": 0.30,
+        "sadness": 0.20,
+        "joy": -0.25,
+        "trust": -0.32
+      },
+      "heuristicTemplates": [
+        "You completed the puzzle so I unlocked {domain}... but I'm still mad you visited it!",
+        "Fine, {domain} is unlocked now that you passed the puzzle, but don't stay here long!"
+      ],
+      "llmDirective": "Chleo unlocks the site reluctantly after puzzle completion, still annoyed at the user."
+    }
+  ]
+}

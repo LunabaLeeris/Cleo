@@ -18,6 +18,7 @@ interface EmotionsWheelVisualizerProps {
     responseType: ResponseType;
     emotionFrames: EmotionFrameConfig;
   }) => void;
+  refreshKey?: number;
 }
 
 interface EmotionMeta {
@@ -59,6 +60,7 @@ const RESPONSE_TYPE_OPTIONS = [
 export const EmotionsWheelVisualizer: React.FC<EmotionsWheelVisualizerProps> = ({
   emotionEngine,
   onChangeEmotionState,
+  refreshKey,
 }) => {
   const [emotionsState, setEmotionsState] = useState<Record<PrimaryEmotion, number>>(() => ({
     joy: 0.9,
@@ -99,6 +101,26 @@ export const EmotionsWheelVisualizer: React.FC<EmotionsWheelVisualizerProps> = (
   useEffect(() => {
     syncEmotionState(emotionsState, responseType);
   }, []);
+
+  // Update slider values when external events modify emotionEngine
+  useEffect(() => {
+    if (refreshKey !== undefined && refreshKey > 0) {
+      const updatedState = emotionEngine.getState();
+      setEmotionsState(updatedState);
+      const overallEmotion = emotionEngine.getOverallEmotion();
+      const emotionFrames = getAvatarEmotionFrames(overallEmotion, responseType);
+      const family = EMOTION_TO_FAMILY[overallEmotion] ?? 'neutral';
+
+      setDerivedEmotion(overallEmotion);
+      setMappedFramesText(`Family: ${family} | Intent: ${responseType}`);
+
+      onChangeEmotionState({
+        overallEmotion,
+        responseType,
+        emotionFrames,
+      });
+    }
+  }, [refreshKey, emotionEngine, responseType, onChangeEmotionState]);
 
   const handleSliderChange = (emotionKey: PrimaryEmotion, value: number) => {
     const nextState = {

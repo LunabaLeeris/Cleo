@@ -26,7 +26,7 @@ const PLUTCHIK_DYAD_MAP: Record<string, PlutchikEmotion> = {
   ['surprise+trust' as string]: 'Curiosity',
   'fear+sadness': 'Despair',
   'disgust+surprise': 'Unbelief',
-  'anger+sadness': 'Envy',
+  'anger+sadness': 'Disappointment',
   'anticipation+disgust': 'Cynicism',
   'anger+joy': 'Pride',
   'anticipation+trust': 'Hope',

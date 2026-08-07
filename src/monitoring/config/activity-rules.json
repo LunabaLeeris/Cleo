@@ -1,0 +1,41 @@
+{
+  "rules": [
+    {
+      "domain": "facebook.com",
+      "type": "blocked",
+      "dailyLimitSeconds": 0,
+      "spentTodaySeconds": 0,
+      "warningThresholdPercent": 80,
+      "requiresPuzzleToUnblock": true
+    },
+    {
+      "domain": "youtube.com",
+      "type": "avoid",
+      "dailyLimitSeconds": 60,
+      "spentTodaySeconds": 0,
+      "warningThresholdPercent": 75,
+      "requiresPuzzleToUnblock": false
+    },
+    {
+      "domain": "github.com",
+      "type": "productive",
+      "dailyLimitSeconds": 0,
+      "spentTodaySeconds": 0,
+      "warningThresholdPercent": 80,
+      "requiresPuzzleToUnblock": false
+    },
+    {
+      "domain": "stackoverflow.com",
+      "type": "productive",
+      "dailyLimitSeconds": 0,
+      "spentTodaySeconds": 0,
+      "warningThresholdPercent": 80,
+      "requiresPuzzleToUnblock": false
+    }
+  ],
+  "productiveRewardIntervalSeconds": 60,
+  "unblockPuzzlePenalty": {
+    "anger": 0.35,
+    "sadness": 0.25
+  }
+}

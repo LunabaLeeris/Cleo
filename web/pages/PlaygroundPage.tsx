@@ -8,6 +8,7 @@ import {
   PlutchikEmotion,
   ResponseType,
   EmotionFrameConfig,
+  getAvatarEmotionFrames,
 } from '../../src/avatar';
 
 import { Header } from '../components/Header';
@@ -20,8 +21,11 @@ import { MappedWordsView } from '../components/MappedWordsView';
 import { ActivitySimulator } from '../components/ActivitySimulator';
 import { EngineTuningControls } from '../components/EngineTuningControls';
 import { VoiceModulationControls } from '../components/VoiceModulationControls';
+import { MonitoringSimulator } from '../components/MonitoringSimulator';
 import { MarketplaceSection } from '../components/MarketplaceSection';
 import { ProjectOverview } from '../components/ProjectOverview';
+
+import { Button } from '../components/ui';
 
 // Initialize Vercel Analytics tracking.
 injectVercelAnalytics();
@@ -34,6 +38,7 @@ export const PlaygroundPage: React.FC = () => {
   const [theme, setTheme] = useState<'cream' | 'grid'>('cream');
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [showMappedWords, setShowMappedWords] = useState<boolean>(false);
+  const [activeTabPanel, setActiveTabPanel] = useState<'modulation' | 'monitoring'>('modulation');
 
   const [speechBubbleText, setSpeechBubbleText] = useState<string>(
     'Hello! I am CHLEO. Click any action below to test my reactions!'
@@ -46,6 +51,7 @@ export const PlaygroundPage: React.FC = () => {
 
   const [cycleSpeed, setCycleSpeed] = useState<number>(1000);
   const [renderScale, setRenderScale] = useState<number>(6);
+  const [emotionRefreshKey, setEmotionRefreshKey] = useState<number>(0);
 
   const [currentEmotionState, setCurrentEmotionState] = useState<{
     overallEmotion: PlutchikEmotion;
@@ -54,7 +60,7 @@ export const PlaygroundPage: React.FC = () => {
   }>({
     overallEmotion: 'Love',
     responseType: 'declarative',
-    emotionFrames: { body: 'joyful', eyes: 'joyful', eyebrows: 'joyful' },
+    emotionFrames: getAvatarEmotionFrames('Love', 'declarative'),
   });
 
   const speechTimerRef = useRef<number | null>(null);
@@ -66,11 +72,13 @@ export const PlaygroundPage: React.FC = () => {
   }, [theme]);
 
   // Display speech bubble text and synthesize speech audio.
-  const speakText = async (text: string) => {
+  const speakText = async (text: string, customEmotionFrames?: EmotionFrameConfig) => {
     if (speechTimerRef.current) clearTimeout(speechTimerRef.current);
     if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current);
 
-    const { overallEmotion, emotionFrames } = currentEmotionState;
+    // Query real-time overall emotion directly from engine instance to avoid stale React closure state
+    const realTimeOverall = emotionEngineRef.current.getOverallEmotion();
+    const emotionFrames = customEmotionFrames ?? getAvatarEmotionFrames(realTimeOverall, currentEmotionState.responseType || 'declarative');
     const compositor = compositorRef.current;
     const tickMs = (defaultAvatarConfig.cycleDurationMs ?? 1000) / defaultAvatarConfig.masterFrameCount;
 
@@ -78,7 +86,7 @@ export const PlaygroundPage: React.FC = () => {
 
     setSpeechBubbleText(text);
     setIsBubbleVisible(true);
-    setActiveExpressionLabel(`Speaking (${overallEmotion})`);
+    setActiveExpressionLabel(`Speaking (${realTimeOverall})`);
 
     if (compositor) {
       defaultSpeechOrchestrator.playPreRenderedSpeech(packet, compositor);
@@ -165,6 +173,7 @@ export const PlaygroundPage: React.FC = () => {
           <EmotionsWheelVisualizer
             emotionEngine={emotionEngineRef.current}
             onChangeEmotionState={(newState) => setCurrentEmotionState(newState)}
+            refreshKey={emotionRefreshKey}
           />
 
           {!showMappedWords ? (
@@ -191,12 +200,48 @@ export const PlaygroundPage: React.FC = () => {
             onRenderScaleChange={handleRenderScaleChange}
           />
 
-          <VoiceModulationControls
-            onTestVoice={() => {
-              const testText = speechInputText.trim() || 'get me some water';
-              speakText(testText);
-            }}
-          />
+          {/* Sub-panel Tabs for Voice Modulation & Monitoring Simulator */}
+          <div style={{ display: 'flex', gap: '8px', marginTop: '12px', marginBottom: '8px' }}>
+            <Button
+              variant={activeTabPanel === 'modulation' ? 'primary' : 'secondary'}
+              onClick={() => setActiveTabPanel('modulation')}
+              style={{ flex: 1, padding: '8px 10px', fontSize: '0.85rem' }}
+            >
+              🎙️ Voice Modulation
+            </Button>
+            <Button
+              variant={activeTabPanel === 'monitoring' ? 'primary' : 'secondary'}
+              onClick={() => setActiveTabPanel('monitoring')}
+              style={{ flex: 1, padding: '8px 10px', fontSize: '0.85rem' }}
+            >
+              🛡️ Monitoring
+            </Button>
+          </div>
+
+          {activeTabPanel === 'modulation' ? (
+            <VoiceModulationControls
+              onTestVoice={() => {
+                const testText = speechInputText.trim() || 'get me some water';
+                speakText(testText);
+              }}
+            />
+          ) : (
+            <MonitoringSimulator
+              emotionEngine={emotionEngineRef.current}
+              onSpeakText={(text) => speakText(text)}
+              onRefreshEmotionState={() => {
+                const overall = emotionEngineRef.current.getOverallEmotion();
+                const newFrames = getAvatarEmotionFrames(overall, 'declarative');
+                setCurrentEmotionState({
+                  overallEmotion: overall,
+                  responseType: 'declarative',
+                  emotionFrames: newFrames,
+                });
+                // Update the values of the tuners to reflect the new values in emotionEngineRef
+                setEmotionRefreshKey((prev) => prev + 1);
+              }}
+            />
+          )}
         </aside>
       </main>
 

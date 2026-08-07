@@ -1,6 +1,6 @@
 import React from 'react';
 
-export interface ButtonProps {
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?:
     | 'primary'
     | 'secondary'
@@ -14,14 +14,7 @@ export interface ButtonProps {
     | 'marketplace'
     | 'custom';
   icon?: React.ReactNode;
-  children?: React.ReactNode;
-  className?: string;
   active?: boolean;
-  disabled?: boolean;
-  title?: string;
-  id?: string;
-  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
-  style?: React.CSSProperties;
 }
 
 // Renders a reusable button with optional icons and pixel art themes.
@@ -34,8 +27,10 @@ export const Button: React.FC<ButtonProps> = ({
   disabled = false,
   title,
   id,
+  type = 'button',
   onClick,
   style,
+  ...restProps
 }) => {
   const getVariantClass = (): string => {
     switch (variant) {
@@ -69,11 +64,13 @@ export const Button: React.FC<ButtonProps> = ({
   return (
     <button
       id={id}
+      type={type}
       className={combinedClass}
       title={title}
       disabled={disabled}
       onClick={onClick}
       style={style}
+      {...restProps}
     >
       {icon && <span className="btn-icon">{icon}</span>}
       {children && (variant === 'drawer-toggle' ? <span className="btn-text">{children}</span> : children)}

@@ -55,7 +55,7 @@ export type PlutchikEmotion =
   | 'Curiosity'      // Trust + Surprise
   | 'Despair'        // Fear + Sadness
   | 'Unbelief'       // Surprise + Disgust
-  | 'Envy'           // Sadness + Anger
+  | 'Disappointment'           // Sadness + Anger
   | 'Cynicism'       // Disgust + Anticipation
   | 'Pride'          // Anger + Joy
   | 'Hope'           // Anticipation + Trust
