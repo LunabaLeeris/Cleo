@@ -51,12 +51,6 @@ export const Header: React.FC<HeaderProps> = ({
       </nav>
 
       <div className="header-actions">
-        {activeTab === 'playground' && (
-          <Badge variant="pill" icon={<span className="pulse-dot" />}>
-            Live v1.0
-          </Badge>
-        )}
-
         <a
           href="https://github.com/LunabaLeeris/Chleo"
           target="_blank"
@@ -66,29 +60,6 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <span className="btn-icon">⭐</span> Contribute
         </a>
-
-        {activeTab === 'playground' && onThemeChange && (
-          <div className="theme-selector">
-            <Button
-              id="theme-cream-btn"
-              variant="theme"
-              active={theme === 'cream'}
-              title="Cozy Cream Pixel Theme"
-              onClick={() => onThemeChange('cream')}
-            >
-              Cream
-            </Button>
-            <Button
-              id="theme-grid-btn"
-              variant="theme"
-              active={theme === 'grid'}
-              title="Pixel Grid Stage"
-              onClick={() => onThemeChange('grid')}
-            >
-              Grid
-            </Button>
-          </div>
-        )}
 
         {activeTab === 'playground' && onToggleDrawer && (
           <Button

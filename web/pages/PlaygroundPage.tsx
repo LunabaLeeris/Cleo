@@ -14,6 +14,7 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { AvatarStage } from '../components/AvatarStage';
 import { EmotionControls } from '../components/EmotionControls';
+import { EmotionsWheelVisualizer } from '../components/EmotionsWheelVisualizer';
 import { SpeechSimulator } from '../components/SpeechSimulator';
 import { MappedWordsView } from '../components/MappedWordsView';
 import { ActivitySimulator } from '../components/ActivitySimulator';
@@ -133,6 +134,9 @@ export const PlaygroundPage: React.FC = () => {
           speechBubbleText={speechBubbleText}
           isBubbleVisible={isBubbleVisible}
           activeExpressionLabel={activeExpressionLabel}
+          renderScale={renderScale}
+          theme={theme}
+          onThemeChange={(newTheme) => setTheme(newTheme)}
           onCompositorInit={(compositor) => {
             compositorRef.current = compositor;
           }}
@@ -158,23 +162,18 @@ export const PlaygroundPage: React.FC = () => {
               ✕
             </button>
           </div>
+          <EmotionsWheelVisualizer
+            emotionEngine={emotionEngineRef.current}
+            onChangeEmotionState={(newState) => setCurrentEmotionState(newState)}
+          />
 
           {!showMappedWords ? (
-            <>
-              <EmotionControls
-                emotionEngine={emotionEngineRef.current}
-                onChangeEmotionState={(newState) => setCurrentEmotionState(newState)}
-              />
-
-              <SpeechSimulator
-                speechInputText={speechInputText}
-                onSpeechInputChange={(val) => setSpeechInputText(val)}
-                onSpeakText={(text) => speakText(text)}
-                onToggleMappedWords={() => setShowMappedWords(true)}
-              />
-
-              <ActivitySimulator onSpeakText={(text) => speakText(text)} />
-            </>
+            <SpeechSimulator
+              speechInputText={speechInputText}
+              onSpeechInputChange={(val) => setSpeechInputText(val)}
+              onSpeakText={(text) => speakText(text)}
+              onToggleMappedWords={() => setShowMappedWords(true)}
+            />
           ) : (
             <MappedWordsView
               onSelectWord={(word) => {

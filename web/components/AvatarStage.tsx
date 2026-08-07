@@ -3,11 +3,15 @@ import {
   AvatarCompositor,
   defaultAvatarConfig,
 } from '../../src/avatar';
+import { Button, Badge } from './ui';
 
 interface AvatarStageProps {
   speechBubbleText: string;
   isBubbleVisible: boolean;
   activeExpressionLabel: string;
+  renderScale?: number;
+  theme?: 'cream' | 'grid';
+  onThemeChange?: (theme: 'cream' | 'grid') => void;
   onCompositorInit?: (compositor: AvatarCompositor) => void;
   onBlink?: () => void;
 }
@@ -17,6 +21,9 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
   speechBubbleText,
   isBubbleVisible,
   activeExpressionLabel,
+  renderScale = 6,
+  theme = 'cream',
+  onThemeChange,
   onCompositorInit,
   onBlink,
 }) => {
@@ -29,12 +36,22 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
   const isDraggingRef = useRef<boolean>(false);
   const offsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  // Sync renderScale prop changes to active compositor.
+  useEffect(() => {
+    if (compositorRef.current && renderScale !== undefined) {
+      compositorRef.current.setScale(renderScale);
+    }
+  }, [renderScale]);
+
   // Initialize the avatar compositor when component mounts.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const compositor = new AvatarCompositor(canvas, defaultAvatarConfig);
+    const compositor = new AvatarCompositor(canvas, {
+      ...defaultAvatarConfig,
+      scale: renderScale,
+    });
     compositorRef.current = compositor;
 
     let isSubscribed = true;
@@ -158,6 +175,39 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
   return (
     <section className="avatar-stage-container" id="stage-container">
       <div className="stage-card panel-bg-stage" id="avatar-stage" ref={stageRef}>
+        {/* Top Left Live v1.0 Badge */}
+        <div className="stage-overlay-top-left">
+          <Badge variant="pill" icon={<span className="pulse-dot" />}>
+            Live v1.0
+          </Badge>
+        </div>
+
+        {/* Top Right Cream/Grid Theme Toggle */}
+        {onThemeChange && (
+          <div className="stage-overlay-top-right">
+            <div className="theme-selector">
+              <Button
+                id="theme-cream-btn"
+                variant="theme"
+                active={theme === 'cream'}
+                title="Cozy Cream Pixel Theme"
+                onClick={() => onThemeChange('cream')}
+              >
+                Cream
+              </Button>
+              <Button
+                id="theme-grid-btn"
+                variant="theme"
+                active={theme === 'grid'}
+                title="Pixel Grid Stage"
+                onClick={() => onThemeChange('grid')}
+              >
+                Grid
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div
           id="web-avatar-wrapper"
           className="avatar-wrapper grab-cursor"
