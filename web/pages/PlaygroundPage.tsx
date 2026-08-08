@@ -2,8 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { inject as injectVercelAnalytics } from '@vercel/analytics';
 import {
   AvatarCompositor,
-  defaultAvatarConfig,
-  defaultSpeechOrchestrator,
   EmotionsOrchestrator,
   PlutchikEmotion,
   ResponseType,
@@ -80,31 +78,26 @@ export const PlaygroundPage: React.FC = () => {
     const realTimeOverall = emotionEngineRef.current.getOverallEmotion();
     const emotionFrames = customEmotionFrames ?? getAvatarEmotionFrames(realTimeOverall, currentEmotionState.responseType || 'declarative');
     const compositor = compositorRef.current;
-    const tickMs = (defaultAvatarConfig.cycleDurationMs ?? 1000) / defaultAvatarConfig.masterFrameCount;
-
-    const packet = await defaultSpeechOrchestrator.preRenderSpeech(text, tickMs, emotionFrames);
 
     setSpeechBubbleText(text);
     setIsBubbleVisible(true);
     setActiveExpressionLabel(`Speaking (${realTimeOverall})`);
 
     if (compositor) {
-      defaultSpeechOrchestrator.playPreRenderedSpeech(packet, compositor);
+      const packet = await compositor.speakWithEmotionConfig(text, emotionFrames, {
+        onComplete: () => {
+          compositorRef.current?.resetAll();
+          setActiveExpressionLabel('Idle');
+        },
+      });
+
+      const speakDuration = Math.max(1200, packet.totalDurationMs);
+      const bubbleDuration = speakDuration + 1500;
+
+      bubbleTimerRef.current = window.setTimeout(() => {
+        setIsBubbleVisible(false);
+      }, bubbleDuration);
     }
-
-    const speakDuration = Math.max(1200, packet.totalDurationMs);
-    const bubbleDuration = speakDuration + 1500;
-
-    speechTimerRef.current = window.setTimeout(() => {
-      if (compositorRef.current) {
-        compositorRef.current.resetAll();
-      }
-      setActiveExpressionLabel('Idle');
-    }, speakDuration);
-
-    bubbleTimerRef.current = window.setTimeout(() => {
-      setIsBubbleVisible(false);
-    }, bubbleDuration);
   };
 
   const handleCycleSpeedChange = (ms: number) => {

@@ -1,5 +1,5 @@
 export { AvatarCompositor } from './avatar-compositor';
-export type { ComposedSpeakResult } from './avatar-compositor';
+export type { ComposedSpeakResult, SpeakOptions } from './avatar-compositor';
 export { defaultAvatarConfig } from './avatar-config';
 export { preloadAvatarSprites, loadImage, clearImageCache, ensureImagesLoaded } from './sprite-loader';
 export {

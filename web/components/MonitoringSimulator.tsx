@@ -103,7 +103,7 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
     onRefreshEmotionState();
   };
 
-  // Goal 2 & 6: Unblock via Puzzle Finish (with Anger & Sadness Penalty)
+  //  Unblock via Puzzle Finish (with Anger & Sadness Penalty)
   const handleUnblockWithPuzzle = (domain: string) => {
     if (!tracker) return;
     const result = tracker.completePuzzleAndUnblock(domain);

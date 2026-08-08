@@ -11,7 +11,13 @@ import { PART_RENDER_ORDER } from './sprite-types';
 import { preloadAvatarSprites, ensureImagesLoaded } from './sprite-loader';
 import type { EmotionFrameConfig, PlutchikEmotion, ResponseType } from './emotions/emotion-types';
 import { getAvatarEmotionFrames } from './emotions/response-frame-map';
-import { defaultSpeechOrchestrator } from './tts/speech-orchestrator';
+import { defaultSpeechOrchestrator, type PreRenderedSpeechPacket } from './tts/speech-orchestrator';
+
+/** Options for speakWithEmotion and speakWithEmotionConfig methods. */
+export interface SpeakOptions {
+  /** Optional callback executed when speech animation duration completes. */
+  onComplete?: () => void;
+}
 
 /**
  * Runtime animation state for a single avatar part.
@@ -219,10 +225,11 @@ export class AvatarCompositor {
   async speakWithEmotion(
     text: string,
     overallEmotion: PlutchikEmotion,
-    responseType: ResponseType
-  ): Promise<void> {
+    responseType: ResponseType,
+    options?: SpeakOptions
+  ): Promise<PreRenderedSpeechPacket> {
     const emotionFrames = getAvatarEmotionFrames(overallEmotion, responseType);
-    await this.speakWithEmotionConfig(text, emotionFrames);
+    return this.speakWithEmotionConfig(text, emotionFrames, options);
   }
 
   /**
@@ -230,12 +237,22 @@ export class AvatarCompositor {
    */
   async speakWithEmotionConfig(
     text: string,
-    emotionFrames: EmotionFrameConfig
-  ): Promise<void> {
+    emotionFrames: EmotionFrameConfig,
+    options?: SpeakOptions
+  ): Promise<PreRenderedSpeechPacket> {
     const tickMs = (this.config.cycleDurationMs ?? 1000) / this.config.masterFrameCount;
     const packet = await defaultSpeechOrchestrator.preRenderSpeech(text, tickMs, emotionFrames);
     defaultSpeechOrchestrator.playPreRenderedSpeech(packet, this);
+
+    if (options?.onComplete) {
+      setTimeout(() => {
+        options.onComplete?.();
+      }, packet.totalDurationMs);
+    }
+
+    return packet;
   }
+
 
 
   /**

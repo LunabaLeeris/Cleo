@@ -21,9 +21,6 @@ export interface PreRenderedSpeechPacket {
   /** TTS-driven animation composition result with word anchors. */
   animationResult: ComposedSpeakResult;
 
-  /** Word start frame anchors with measured durations. */
-  wordAnchors: WordStartAnchor[];
-
   /** Total animation duration in milliseconds. */
   totalDurationMs: number;
 }
@@ -126,7 +123,6 @@ export class SpeechOrchestrator {
     return {
       text,
       animationResult,
-      wordAnchors,
       totalDurationMs,
     };
   }
@@ -138,21 +134,22 @@ export class SpeechOrchestrator {
    * @param compositor - Active AvatarCompositor instance.
    */
   playPreRenderedSpeech(packet: PreRenderedSpeechPacket, compositor: AvatarCompositor): void {
-    // 1. Cancel any active speech output
+    //  Cancel any active speech output
     defaultTTSModulator.stopSpeech();
 
-    // 2. Pre-warm AudioContext and TTS synthesis
+    // Pre-warm AudioContext and TTS synthesis
     defaultTTSModulator.preWarm();
 
-    // 3. Set word boundary callback: fires when animation advances to a word start frame
+    // Set word boundary callback: fires when animation advances to a word start frame
     compositor.setOnWordStartCallback((wordIndex, word) => {
-      const anchor = packet.wordAnchors.find(a => a.wordIndex === wordIndex);
+      const anchors = packet.animationResult.wordAnchors;
+      const anchor = anchors?.find(a => a.wordIndex === wordIndex);
       const durMs = anchor?.durationMs ?? 250;
       console.log(`[SpeechOrchestrator] Sync trigger: playing word "${word}" (index ${wordIndex}, ${durMs}ms)`);
       defaultTTSModulator.speakWord(word, durMs);
     });
 
-    // 4. Play mouth viseme animation sequence (animation playback drives word audio)
+    // Play mouth viseme animation sequence (animation playback drives word audio)
     compositor.playSpeakSequence(packet.animationResult);
   }
 }
