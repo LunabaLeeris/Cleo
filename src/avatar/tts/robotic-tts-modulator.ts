@@ -50,6 +50,28 @@ export interface RoboticModulationConfig {
 
 /** Alias for RoboticModulationConfig. */
 export type TTSModulatorConfig = RoboticModulationConfig;
+
+/** Measured Web Speech API word boundary event data. */
+export interface TTSBoundaryEvent {
+  /** Text character index where word starts. */
+  charIndex: number;
+
+  /** Word character length. */
+  charLength: number;
+
+  /** Milliseconds elapsed since utterance playback started. */
+  elapsedMs: number;
+}
+
+/** Complete TTS phrase boundary measurement result. */
+export interface TTSMeasurementResult {
+  /** Array of recorded word boundary events. */
+  events: TTSBoundaryEvent[];
+
+  /** Total elapsed phrase duration in milliseconds. */
+  totalDurationMs: number;
+}
+
 /** Default modulation parameters for audible robotic female vocal voice. */
 export const DEFAULT_MODULATION_CONFIG: RoboticModulationConfig = {
   speechPitch: 1.75,
@@ -94,7 +116,7 @@ export class RoboticTTSModulator {
   }
 
   /**
-   * Pre-warms Web AudioContext and SpeechSynthesis engine to prevent latency.
+   * Pre-warms Web AudioContext, hardware audio drivers, and SpeechSynthesis engine to prevent latency.
    */
   preWarm(): void {
     if (typeof window === 'undefined') return;
@@ -106,8 +128,20 @@ export class RoboticTTSModulator {
       }
     }
 
-    if (this.audioCtx && this.audioCtx.state === 'suspended') {
-      this.audioCtx.resume();
+    if (this.audioCtx) {
+      if (this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume();
+      }
+      // Prime OS audio drivers / WASAPI / Bluetooth receivers with a 10ms silent buffer
+      try {
+        const buffer = this.audioCtx.createBuffer(1, 441, 44100);
+        const source = this.audioCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(this.audioCtx.destination);
+        source.start(0);
+      } catch {
+        // Ignore background audio policy errors before user interaction
+      }
     }
 
     if (this.speechSynth && this.speechSynth.paused) {
@@ -254,6 +288,92 @@ export class RoboticTTSModulator {
   }
 
   /**
+   * Measures actual TTS word boundary timestamps using a silent synthesis pass.
+   *
+   * @param text - Full phrase string to measure.
+   * @returns Promise resolving to TTSMeasurementResult object or null if unavailable.
+   */
+  async measurePhraseTimings(text: string): Promise<TTSMeasurementResult | null> {
+    const synth = this.speechSynth;
+    if (typeof window === 'undefined' || !synth || !text || text.trim().length === 0) {
+      return null;
+    }
+
+    return new Promise((resolve) => {
+      try {
+        this.preWarm();
+        synth.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        if (this.selectedVoice) {
+          utterance.voice = this.selectedVoice;
+        }
+
+        utterance.pitch = this.config.speechPitch;
+        utterance.rate = this.config.speechRate;
+        utterance.volume = 0; // Silent measurement pass
+
+        const events: TTSBoundaryEvent[] = [];
+        let startTime = 0;
+        let resolved = false;
+
+        const cleanupAndResolve = (result: TTSMeasurementResult | null) => {
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timeoutId);
+            resolve(result);
+          }
+        };
+
+        const timeoutMs = Math.max(1500, Math.min(8000, text.length * 100));
+        const timeoutId = setTimeout(() => {
+          if (events.length > 0) {
+            const lastEvent = events[events.length - 1];
+            const totalDurationMs = lastEvent.elapsedMs + 200;
+            cleanupAndResolve({ events, totalDurationMs });
+          } else {
+            cleanupAndResolve(null);
+          }
+        }, timeoutMs);
+
+        utterance.onstart = () => {
+          startTime = performance.now();
+        };
+
+        utterance.onboundary = (e) => {
+          if (e.name === 'word') {
+            const elapsedMs = Math.max(0, Math.round(startTime > 0 ? performance.now() - startTime : 0));
+            events.push({
+              charIndex: e.charIndex,
+              charLength: e.charLength || 0,
+              elapsedMs,
+            });
+          }
+        };
+
+        utterance.onend = () => {
+          const totalDurationMs = Math.max(0, Math.round(startTime > 0 ? performance.now() - startTime : 0));
+          // Wait 60ms to let browser speech engine fully transition to idle
+          setTimeout(() => {
+            cleanupAndResolve({ events, totalDurationMs });
+          }, 60);
+        };
+
+        utterance.onerror = () => {
+          setTimeout(() => {
+            cleanupAndResolve(events.length > 0 ? { events, totalDurationMs: events[events.length - 1].elapsedMs + 200 } : null);
+          }, 60);
+        };
+
+        synth.speak(utterance);
+      } catch (err) {
+        console.warn('[RoboticTTSModulator] Timing measurement error:', err);
+        resolve(null);
+      }
+    });
+  }
+
+  /**
    * Speaks a single word with Wall-E robotic pitch modulation and harmonic chime overlay.
    * Preserves audible word pronunciation ("water", "get").
    *
@@ -261,7 +381,7 @@ export class RoboticTTSModulator {
    * @param durationMs - Estimated duration for robotic harmonic tone sweep.
    * @param onEnd      - Optional completion callback.
    */
-  speakWord(word: string, durationMs: number = 300, onEnd?: () => void): void {
+  speakWord(word: string, durationMs = 300, onEnd?: () => void): void {
     if (!word) return;
 
     this.preWarm();
@@ -274,7 +394,9 @@ export class RoboticTTSModulator {
     // 2. Play vocal TTS word enunciation via SpeechSynthesis (scaled inversely by robotToneBlend)
     const vocalVolume = this.config.masterVolume * Math.max(0, 1 - this.config.robotToneBlend);
     if (this.speechSynth && vocalVolume > 0.01) {
-      this.speechSynth.cancel();
+      if (this.speechSynth.speaking || this.speechSynth.pending) {
+        this.speechSynth.cancel();
+      }
 
       const utterance = new SpeechSynthesisUtterance(word);
       if (this.selectedVoice) {
@@ -429,7 +551,7 @@ export class RoboticTTSModulator {
    * Stops active vocal TTS speech output immediately.
    */
   stopSpeech(): void {
-    if (this.speechSynth) {
+    if (this.speechSynth && (this.speechSynth.speaking || this.speechSynth.pending)) {
       this.speechSynth.cancel();
     }
   }

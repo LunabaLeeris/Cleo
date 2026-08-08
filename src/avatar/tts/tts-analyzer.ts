@@ -6,7 +6,7 @@
  * All comments follow ASD-STE100 rules (imperative and simple present tense).
  */
 
-import { tokenizeText, SpeechToken } from '../speak-frame-map';
+import { tokenizeText } from '../speak-frame-map';
 import { defaultTTSModulator } from './robotic-tts-modulator';
 
 /** Measured timing data for a single spoken word token. */
@@ -52,40 +52,108 @@ export class TTSAnalyzer {
     }
 
     const config = defaultTTSModulator.getConfig();
-    const baseMsPerWord = Math.max(80, Math.round(160 / Math.max(0.4, config.speechRate)));
+    const speechRate = Math.max(0.4, config.speechRate);
     const wordTimings: TTSWordTiming[] = [];
 
+    // Measure actual TTS word boundary timestamps using Web Speech API synthesis
+    const measurement = await defaultTTSModulator.measurePhraseTimings(text);
+
+    if (measurement && measurement.events.length > 0) {
+      const { events } = measurement;
+
+      // Map character start offsets for each token in input text
+      let searchOffset = 0;
+      const tokenOffsets: number[] = [];
+      for (const token of tokens) {
+        const idx = text.toLowerCase().indexOf(token.word.toLowerCase(), searchOffset);
+        if (idx !== -1) {
+          tokenOffsets.push(idx);
+          searchOffset = idx + token.word.length;
+        } else {
+          tokenOffsets.push(searchOffset);
+        }
+      }
+
+      // Associate boundary timestamps with each token
+      const tokenTimestamps: number[] = [];
+      for (let i = 0; i < tokens.length; i++) {
+        const targetOffset = tokenOffsets[i];
+        let bestEvent = events[i];
+        if (events.length !== tokens.length) {
+          let minDiff = Infinity;
+          for (const ev of events) {
+            const diff = Math.abs(ev.charIndex - targetOffset);
+            if (diff < minDiff) {
+              minDiff = diff;
+              bestEvent = ev;
+            }
+          }
+        }
+        tokenTimestamps.push(bestEvent ? bestEvent.elapsedMs : i * 200);
+      }
+
+      // Approximate vocal time per character at active speech rate (ms per character)
+      const msPerChar = Math.round(75 / speechRate);
+
+      let totalDurationMs = 0;
+      for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i];
+        const tStart = tokenTimestamps[i];
+        const tNext = (i < tokens.length - 1) ? tokenTimestamps[i + 1] : measurement.totalDurationMs;
+        const totalInterval = Math.max(50, tNext - tStart);
+
+        // Expected active vocalization duration based on word character count
+        const expectedVocalMs = Math.max(80, Math.round(40 + token.word.length * msPerChar));
+
+        let wordDurationMs: number;
+        let pauseMs: number;
+
+        if (totalInterval <= expectedVocalMs + 40) {
+          wordDurationMs = totalInterval;
+          pauseMs = 0;
+        } else {
+          wordDurationMs = Math.min(totalInterval, expectedVocalMs);
+          pauseMs = totalInterval - wordDurationMs;
+        }
+
+        wordTimings.push({
+          word: token.word,
+          durationMs: wordDurationMs,
+          pauseMs
+        });
+
+        totalDurationMs += wordDurationMs + pauseMs;
+      }
+
+      console.log(`[TTSAnalyzer] TTS-measured phrase "${text}": ${totalDurationMs}ms total duration (${wordTimings.length} words).`);
+
+      return {
+        text,
+        wordTimings,
+        totalDurationMs,
+      };
+    }
+
+    // Fallback when Web Speech API measurement is unavailable (e.g. headless/SSR environment)
+    const baseMsPerWord = Math.max(80, Math.round(160 / speechRate));
     let totalDurationMs = 0;
 
     for (let i = 0; i < tokens.length; i++) {
       const token = tokens[i];
       const length = token.word.length;
-
-      // Word duration scales proportionally with character length
-      const wordDurationMs = Math.max(
-        90,
-        Math.round(baseMsPerWord * (0.60 + Math.min(1.2, length * 0.09)))
-      );
-
-      let pauseMs = 0; // 0ms pause for seamless word-to-word animation flow
-      if (token.trailingPunctuation) {
-        if (token.trailingPunctuation === '...') pauseMs = 280;
-        else if (token.trailingPunctuation === '.') pauseMs = 160;
-        else if (token.trailingPunctuation === '?') pauseMs = 180;
-        else if (token.trailingPunctuation === '!') pauseMs = 160;
-        else if (token.trailingPunctuation === ',') pauseMs = 90;
-      }
+      const wordDurationMs = Math.max(90, Math.round(baseMsPerWord * (0.60 + Math.min(1.2, length * 0.09))));
+      const pauseMs = token.trailingPunctuation ? 100 : 0;
 
       wordTimings.push({
         word: token.word,
         durationMs: wordDurationMs,
-        pauseMs,
+        pauseMs
       });
 
       totalDurationMs += wordDurationMs + pauseMs;
     }
 
-    console.log(`[TTSAnalyzer] Mapped phrase "${text}": ${totalDurationMs}ms total duration (${wordTimings.length} words).`);
+    console.log(`[TTSAnalyzer] Fallback phrase estimation "${text}": ${totalDurationMs}ms total duration (${wordTimings.length} words).`);
 
     return {
       text,

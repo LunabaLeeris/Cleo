@@ -8,6 +8,7 @@ import { Button, Badge } from './ui';
 interface AvatarStageProps {
   speechBubbleText: string;
   isBubbleVisible: boolean;
+  isThinking?: boolean;
   activeExpressionLabel: string;
   renderScale?: number;
   theme?: 'cream' | 'grid';
@@ -20,6 +21,7 @@ interface AvatarStageProps {
 export const AvatarStage: React.FC<AvatarStageProps> = ({
   speechBubbleText,
   isBubbleVisible,
+  isThinking = false,
   activeExpressionLabel,
   renderScale = 6,
   theme = 'cream',
@@ -221,9 +223,17 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
         >
           <div
             id="web-speech-bubble"
-            className={`speech-bubble ${isBubbleVisible ? 'visible' : ''}`}
+            className={`speech-bubble ${isBubbleVisible || isThinking ? 'visible' : ''} ${isThinking ? 'thinking-bubble' : ''}`}
           >
-            {speechBubbleText}
+            {isThinking ? (
+              <span className="thinking-dots" title="Thinking...">
+                <span className="dot">.</span>
+                <span className="dot">.</span>
+                <span className="dot">.</span>
+              </span>
+            ) : (
+              speechBubbleText
+            )}
           </div>
           <canvas
             id="web-avatar-canvas"

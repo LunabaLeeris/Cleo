@@ -28,7 +28,7 @@ export type {
 } from './sprite-types';
 export { PART_RENDER_ORDER } from './sprite-types';
 export { RoboticTTSModulator, defaultTTSModulator, DEFAULT_MODULATION_CONFIG } from './tts/robotic-tts-modulator';
-export type { RoboticModulationConfig, TTSModulatorConfig } from './tts/robotic-tts-modulator';
+export type { RoboticModulationConfig, TTSModulatorConfig, TTSBoundaryEvent, TTSMeasurementResult } from './tts/robotic-tts-modulator';
 export { TTSAnalyzer, defaultTTSAnalyzer } from './tts/tts-analyzer';
 export type { TTSWordTiming, TTSPhraseAnalysis } from './tts/tts-analyzer';
 export { SpeechOrchestrator, defaultSpeechOrchestrator } from './tts/speech-orchestrator';

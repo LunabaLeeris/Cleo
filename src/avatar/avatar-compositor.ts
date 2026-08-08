@@ -221,8 +221,8 @@ export class AvatarCompositor {
     overallEmotion: PlutchikEmotion,
     responseType: ResponseType
   ): Promise<void> {
-    const emotionFrames = getAvatarEmotionFrames(overallEmotion, responseType);
-    await this.speakWithEmotionConfig(text, emotionFrames);
+    const emotionConfigs = getAvatarEmotionFrames(overallEmotion, responseType);
+    await this.speakWithEmotionConfig(text, emotionConfigs);
   }
 
   /**
@@ -230,10 +230,10 @@ export class AvatarCompositor {
    */
   async speakWithEmotionConfig(
     text: string,
-    emotionFrames: EmotionFrameConfig
+    emotionConfigs: EmotionFrameConfig
   ): Promise<void> {
     const tickMs = (this.config.cycleDurationMs ?? 1000) / this.config.masterFrameCount;
-    const packet = await defaultSpeechOrchestrator.preRenderSpeech(text, tickMs, emotionFrames);
+    const packet = await defaultSpeechOrchestrator.preRenderSpeech(text, tickMs, emotionConfigs);
     defaultSpeechOrchestrator.playPreRenderedSpeech(packet, this);
   }
 

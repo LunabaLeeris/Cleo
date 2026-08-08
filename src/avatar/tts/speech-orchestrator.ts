@@ -38,13 +38,13 @@ export class SpeechOrchestrator {
    *
    * @param text          - Input text phrase string.
    * @param tickMs        - Master compositor render tick duration in milliseconds.
-   * @param emotionFrames - Optional emotion frame overrides for eyebrows, eyes, and body.
+   * @param emotionConfigs - Optional emotion frame overrides for eyebrows, eyes, and body.
    * @returns Promise resolving to PreRenderedSpeechPacket object.
    */
   async preRenderSpeech(
     text: string,
     tickMs: number,
-    emotionFrames?: EmotionFrameConfig
+    emotionConfigs?: EmotionFrameConfig
   ): Promise<PreRenderedSpeechPacket> {
     console.log('[SpeechOrchestrator] Pre-rendering speech packet for:', `"${text}"`);
 
@@ -82,8 +82,8 @@ export class SpeechOrchestrator {
         composedHoldTicks.push(ticksPerFrame);
       }
 
-      // Append inter-word pause gap frames ONLY when punctuation pause exists (> 80ms)
-      if (item.pauseMs > 80 && i < analysis.wordTimings.length - 1) {
+      // Append inter-word pause gap frames ONLY when punctuation pause exists (>= 40ms)
+      if (item.pauseMs >= 40 && i < analysis.wordTimings.length - 1) {
         const gapTicks = Math.max(1, Math.round(item.pauseMs / tickMs));
         composedMouthFrames.push(MOUTH_FRAMES.neutral);
         composedHoldTicks.push(gapTicks);
@@ -103,18 +103,18 @@ export class SpeechOrchestrator {
       wordAnchors,
     };
 
-    if (emotionFrames) {
+    if (emotionConfigs) {
       const count = composedMouthFrames.length;
-      if (emotionFrames.eyebrows) {
-        animationResult.frames.eyebrows = Array(count).fill(emotionFrames.eyebrows);
+      if (emotionConfigs.eyebrows) {
+        animationResult.frames.eyebrows = Array(count).fill(emotionConfigs.eyebrows);
         animationResult.holdTicks.eyebrows = [...composedHoldTicks];
       }
-      if (emotionFrames.eyes) {
-        animationResult.frames.eyes = Array(count).fill(emotionFrames.eyes);
+      if (emotionConfigs.eyes) {
+        animationResult.frames.eyes = Array(count).fill(emotionConfigs.eyes);
         animationResult.holdTicks.eyes = [...composedHoldTicks];
       }
-      if (emotionFrames.body) {
-        animationResult.frames.body = Array(count).fill(emotionFrames.body);
+      if (emotionConfigs.body) {
+        animationResult.frames.body = Array(count).fill(emotionConfigs.body);
         animationResult.holdTicks.body = [...composedHoldTicks];
       }
     }
@@ -138,13 +138,13 @@ export class SpeechOrchestrator {
    * @param compositor - Active AvatarCompositor instance.
    */
   playPreRenderedSpeech(packet: PreRenderedSpeechPacket, compositor: AvatarCompositor): void {
-    // 1. Cancel any active speech output
+    // Cancel any active speech output
     defaultTTSModulator.stopSpeech();
 
-    // 2. Pre-warm AudioContext and TTS synthesis
+    // Pre-warm AudioContext and TTS synthesis
     defaultTTSModulator.preWarm();
 
-    // 3. Set word boundary callback: fires when animation advances to a word start frame
+    // Set word boundary callback: fires when animation advances to a word start frame
     compositor.setOnWordStartCallback((wordIndex, word) => {
       const anchor = packet.wordAnchors.find(a => a.wordIndex === wordIndex);
       const durMs = anchor?.durationMs ?? 250;
@@ -152,7 +152,7 @@ export class SpeechOrchestrator {
       defaultTTSModulator.speakWord(word, durMs);
     });
 
-    // 4. Play mouth viseme animation sequence (animation playback drives word audio)
+    // Play mouth viseme animation sequence (animation playback drives word audio)
     compositor.playSpeakSequence(packet.animationResult);
   }
 }

@@ -4,6 +4,7 @@ import {
   AvatarCompositor,
   defaultAvatarConfig,
   defaultSpeechOrchestrator,
+  defaultTTSModulator,
   EmotionsOrchestrator,
   PlutchikEmotion,
   ResponseType,
@@ -44,9 +45,10 @@ export const PlaygroundPage: React.FC = () => {
     'Hello! I am CHLEO. Click any action below to test my reactions!'
   );
   const [isBubbleVisible, setIsBubbleVisible] = useState<boolean>(false);
+  const [isThinking, setIsThinking] = useState<boolean>(false);
   const [activeExpressionLabel, setActiveExpressionLabel] = useState<string>('Idle');
   const [speechInputText, setSpeechInputText] = useState<string>(
-    'Hello! Type anything here and watch me talk!'
+    'Hello. I am Chleo! Nice to meet you...'
   );
 
   const [cycleSpeed, setCycleSpeed] = useState<number>(1000);
@@ -76,14 +78,25 @@ export const PlaygroundPage: React.FC = () => {
     if (speechTimerRef.current) clearTimeout(speechTimerRef.current);
     if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current);
 
+    // Pre-warm Web AudioContext and OS audio hardware drivers immediately on user gesture
+    defaultTTSModulator.preWarm();
+
     // Query real-time overall emotion directly from engine instance to avoid stale React closure state
     const realTimeOverall = emotionEngineRef.current.getOverallEmotion();
     const emotionFrames = customEmotionFrames ?? getAvatarEmotionFrames(realTimeOverall, currentEmotionState.responseType || 'declarative');
     const compositor = compositorRef.current;
     const tickMs = (defaultAvatarConfig.cycleDurationMs ?? 1000) / defaultAvatarConfig.masterFrameCount;
 
+    // Show thinking bubble & subtle expression while measuring TTS in background
+    setIsThinking(true);
+    setActiveExpressionLabel(`Thinking... (${realTimeOverall})`);
+    if (compositor) {
+      compositor.playAnimation('eyebrows', 'question', 'once');
+    }
+
     const packet = await defaultSpeechOrchestrator.preRenderSpeech(text, tickMs, emotionFrames);
 
+    setIsThinking(false);
     setSpeechBubbleText(text);
     setIsBubbleVisible(true);
     setActiveExpressionLabel(`Speaking (${realTimeOverall})`);
@@ -141,6 +154,7 @@ export const PlaygroundPage: React.FC = () => {
         <AvatarStage
           speechBubbleText={speechBubbleText}
           isBubbleVisible={isBubbleVisible}
+          isThinking={isThinking}
           activeExpressionLabel={activeExpressionLabel}
           renderScale={renderScale}
           theme={theme}
